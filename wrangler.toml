@@ -1,0 +1,10 @@
+# Cloudflare Wrangler config for Pages direct upload (optional)
+# Install: npm i -g wrangler  (or use GitHub integration instead)
+# Deploy: wrangler pages deploy site/dist --project-name=claude-skills
+
+name = "claude-skills"
+compatibility_date = "2026-11-20"
+pages_build_output_dir = "site/dist"
+
+[vars]
+SITE_URL = "https://claude-skills.pages.dev"
