@@ -314,7 +314,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
     cmd = install_cmd(s)
     install_block = (
         f"<pre><code>{esc(cmd)}</code></pre>\n"
-        f'<p>Restart Claude Code afterwards. See the <a href="{esc(s.get("repo_url", "#"))}" rel="noopener">README</a> for skill-specific setup.</p>'
+        f'<p>Claude Code picks up new skills automatically (run <code>/reload-skills</code> if your skills folder is brand new). See the <a href="{esc(s.get("repo_url", "#"))}" rel="noopener">README</a> for skill-specific setup.</p>'
         f'<p>Using Codex CLI? Copy the same folder to <code>~/.codex/skills/{esc(s["slug"])}</code> instead.</p>'
     )
     faq, faq_jsonld = faq_block(s, cmd)
@@ -624,7 +624,7 @@ def faq_block(s: dict, cmd: str) -> tuple[str, str]:
     qa = [
         (f"What is {name}?", desc or f"{name} is a Claude Code skill by {author}."),
         (f"How do I install {name} in Claude Code?",
-         f"Clone it into your personal skills folder: {cmd.replace(chr(10), ' && ')} — then restart Claude Code."),
+         f"Clone it into your personal skills folder: {cmd.replace(chr(10), ' && ')} — Claude Code picks it up automatically."),
         (f"Is {name} free?",
          f"{name} is open source on GitHub ({stars} stars at last check) and published by {author}."),
         (f"What are alternatives to {name}?",
@@ -973,6 +973,143 @@ def render_blog_index() -> str:
 </div>"""
     return layout(title=f"Blog — {SITE_NAME}", description="Notes on Claude Code skills, programmatic SEO and building SkillNest.",
                   body=body, canonical="/blog/")
+
+
+BLOG_POSTS += [
+    {
+        "slug": "install-claude-code-skills-windows",
+        "title": "How to install Claude Code skills on Windows (and macOS/Linux)",
+        "description": "Where Claude Code looks for skills on Windows, the exact PowerShell commands to install one from GitHub or a zip, and fixes for the most common reasons a skill does not show up.",
+        "date": "2026-11-21",
+        "html": """
+<p>A Claude Code skill is just a folder with a <code>SKILL.md</code> file inside. Installing one means putting that folder where Claude Code looks for skills. Here is exactly where that is on Windows, and how to do it in a minute.</p>
+
+<h2>Where Claude Code looks for skills</h2>
+<ul>
+<li><strong>Personal skills</strong> (available in every project): <code>~/.claude/skills/&lt;skill-name&gt;/SKILL.md</code>. On Windows <code>~</code> is your user folder, so the path is <code>C:\\Users\\&lt;you&gt;\\.claude\\skills\\&lt;skill-name&gt;\\SKILL.md</code>.</li>
+<li><strong>Project skills</strong> (shared with your team through git): <code>.claude/skills/&lt;skill-name&gt;/SKILL.md</code> inside the project.</li>
+</ul>
+<p>The folder name matters: if the skill's <code>SKILL.md</code> has no <code>name</code> field, the folder name becomes the skill name.</p>
+
+<h2>Install a skill from GitHub (PowerShell)</h2>
+<p>Open PowerShell and run:</p>
+<pre><code>New-Item -ItemType Directory -Force "$HOME\\.claude\\skills" | Out-Null
+git clone --depth 1 https://github.com/OWNER/REPO.git "$HOME\\.claude\\skills\\my-skill"</code></pre>
+<p>Replace <code>OWNER/REPO</code> and <code>my-skill</code>. Every skill page on SkillNest shows the exact command for that skill.</p>
+
+<h3>When the skill is inside a bigger repository</h3>
+<p>Many repositories hold several skills in sub-folders. Clone the repository somewhere temporary and copy only the folder you need:</p>
+<pre><code>git clone --depth 1 https://github.com/anthropics/skills.git "$env:TEMP\\anthropic-skills"
+Copy-Item -Recurse "$env:TEMP\\anthropic-skills\\skills\\pdf" "$HOME\\.claude\\skills\\pdf"</code></pre>
+
+<h2>Install a skill from a zip file</h2>
+<pre><code>Expand-Archive .\\my-skill.zip -DestinationPath "$env:TEMP\\my-skill"
+Copy-Item -Recurse "$env:TEMP\\my-skill\\*" "$HOME\\.claude\\skills\\"</code></pre>
+<p>Then check the result: the file must end up at <code>.claude\\skills\\&lt;name&gt;\\SKILL.md</code> &mdash; not one folder deeper.</p>
+
+<h2>macOS and Linux</h2>
+<pre><code>mkdir -p ~/.claude/skills
+git clone --depth 1 https://github.com/OWNER/REPO.git ~/.claude/skills/my-skill</code></pre>
+
+<h2>Check that it works</h2>
+<p>You do not need to restart. Claude Code watches the skills folders and picks up added or edited skills during the session. The one exception: if the <code>skills</code> folder itself did not exist when the session started, run <code>/reload-skills</code>.</p>
+<p>Then either describe the task the skill is for &mdash; Claude loads skills automatically when they are relevant &mdash; or call it directly with <code>/skill-name</code>.</p>
+
+<h2>Troubleshooting</h2>
+<ul>
+<li><strong>The skill never triggers.</strong> Open <code>SKILL.md</code>: the opening <code>---</code> must be the very first line, otherwise the frontmatter (and its <code>description</code>) is not read.</li>
+<li><strong>&ldquo;requires bash &hellip; Git Bash was not found&rdquo;.</strong> Some skills run shell commands with <code>shell: bash</code>. On Windows these need Git Bash, which comes with Git for Windows.</li>
+<li><strong>Wrong folder depth.</strong> <code>skills\\my-skill\\my-skill\\SKILL.md</code> will not load &mdash; move the inner folder up one level.</li>
+<li><strong>Two skills with the same name.</strong> Personal skills take precedence over project skills.</li>
+</ul>
+<p>Always read a skill's files before installing it &mdash; it is code and instructions you are giving your agent. Browse options by topic in the <a href="/best/">best skills guides</a>.</p>
+""",
+    },
+    {
+        "slug": "claude-code-skills-vs-mcp-servers",
+        "title": "Claude Code skills vs MCP servers: what's the difference and when to use each",
+        "description": "Skills teach Claude Code how to do a task; MCP servers give it access to outside tools and data. A plain-English comparison with examples and when to combine them.",
+        "date": "2026-11-21",
+        "html": """
+<p>Skills and MCP servers both extend Claude Code, so they are easy to mix up. The short version: <strong>a skill is know-how, an MCP server is access.</strong></p>
+
+<h2>What a skill is</h2>
+<p>A skill is a folder with a <code>SKILL.md</code> file: instructions, conventions and examples, optionally with supporting files and scripts. Claude Code keeps every skill's short description in context and loads the full instructions only when a task matches &mdash; or when you call it with <code>/skill-name</code>. Custom slash commands have been merged into skills, so a skill is also how you build your own <code>/command</code>.</p>
+
+<h2>What an MCP server is</h2>
+<p>MCP (Model Context Protocol) is an open standard for connecting AI tools to external systems. An MCP server gives Claude Code new tools &mdash; access to a database, an issue tracker, a design tool, an API. You add one with <code>claude mcp add</code>, for example:</p>
+<pre><code>claude mcp add --transport http notion https://mcp.notion.com/mcp</code></pre>
+<p>Servers can be scoped to one project, to all your projects, or shared with a team through a <code>.mcp.json</code> file in the repository.</p>
+
+<h2>Side by side</h2>
+<table style="width:100%;border-collapse:collapse" cellpadding="8">
+<thead><tr style="border-bottom:1px solid var(--border)"><th align="left"></th><th align="left">Skill</th><th align="left">MCP server</th></tr></thead>
+<tbody>
+<tr><td>Gives Claude</td><td>Instructions: how to do a task</td><td>Tools and data: what it can reach</td></tr>
+<tr><td>Made of</td><td>Markdown (plus optional scripts)</td><td>A running server process or remote endpoint</td></tr>
+<tr><td>Install</td><td>Copy a folder into <code>.claude/skills/</code></td><td><code>claude mcp add</code> or <code>.mcp.json</code></td></tr>
+<tr><td>Typical examples</td><td>Commit-message rules, SEO audit checklist, test-writing conventions</td><td>Notion, GitHub, Postgres, browser automation</td></tr>
+<tr><td>Best when</td><td>You keep repeating the same prompt or process</td><td>Claude needs to read or change something outside your files</td></tr>
+</tbody></table>
+
+<h2>When to use which</h2>
+<ul>
+<li>&ldquo;Every time I ask for a PR description I paste the same template&rdquo; &rarr; <strong>skill</strong>.</li>
+<li>&ldquo;I want Claude to read tickets from our tracker&rdquo; &rarr; <strong>MCP server</strong>.</li>
+<li>&ldquo;I want Claude to triage tickets our way&rdquo; &rarr; <strong>both</strong>: the MCP server provides access, the skill describes the triage process and which tools to use.</li>
+</ul>
+
+<h2>Combining them</h2>
+<p>The most useful setups pair the two. A skill can tell Claude which MCP tools to call, in what order and with what checks &mdash; turning raw access into a repeatable workflow. Skills can also pre-approve the specific tools they need with the <code>allowed-tools</code> field.</p>
+<p>Looking for skills that work well alongside MCP? See the <a href="/best/mcp/">best MCP-related skills</a>, or browse all <a href="/best/">topic guides</a>.</p>
+""",
+    },
+    {
+        "slug": "claude-code-skills-beginners-guide",
+        "title": "Claude Code skills for beginners: what they are, how to install one and how to write your own",
+        "description": "A beginner-friendly guide to Claude Code skills: what a SKILL.md is, how Claude decides to use it, how to install a skill and how to write your first one in five minutes.",
+        "date": "2026-11-21",
+        "html": """
+<p>If you keep typing the same instructions into Claude Code &mdash; &ldquo;write tests like this&rdquo;, &ldquo;format commits like that&rdquo; &mdash; a skill lets you write them down once.</p>
+
+<h2>What is a skill?</h2>
+<p>A skill is a folder containing a <code>SKILL.md</code> file. The file starts with a short frontmatter block and then plain instructions in Markdown. Claude Code always knows each skill's description, and loads the full instructions only when your request matches it &mdash; so you can install many skills without filling up the context.</p>
+
+<h2>Install your first skill</h2>
+<ol>
+<li>Pick one from the <a href="/best/">topic guides</a> &mdash; each skill page shows its install command.</li>
+<li>Run the command; it places the skill in <code>~/.claude/skills/&lt;name&gt;/</code>.</li>
+<li>Back in Claude Code, just ask for the task. If the skills folder is brand new, run <code>/reload-skills</code> first.</li>
+</ol>
+<p>On Windows? Follow the <a href="/blog/install-claude-code-skills-windows/">Windows install guide</a>.</p>
+
+<h2>Write your own in five minutes</h2>
+<p>Create <code>~/.claude/skills/changelog-entry/SKILL.md</code>:</p>
+<pre><code>---
+name: changelog-entry
+description: Write a CHANGELOG entry for the current changes. Use when the user asks for a changelog or release notes entry.
+---
+
+1. Read the staged diff (git diff --cached).
+2. Group changes under Added / Changed / Fixed.
+3. One line per change, user-facing language, no file names.
+4. Show the entry; do not edit CHANGELOG.md unless asked.</code></pre>
+<p>That is a complete skill. Only the <code>description</code> really matters for triggering: it tells Claude <em>what</em> the skill does and <em>when</em> to use it. If you leave out <code>name</code>, the folder name is used.</p>
+
+<h2>Tips that make skills work better</h2>
+<ul>
+<li><strong>Be specific in the description.</strong> &ldquo;Use when the user asks for X&rdquo; triggers far more reliably than a vague summary.</li>
+<li><strong>Say when not to use it.</strong> It prevents the skill from hijacking unrelated tasks.</li>
+<li><strong>Give one short example</strong> of the output you want.</li>
+<li><strong>Share with your team</strong> by putting the folder in the project's <code>.claude/skills/</code> and committing it.</li>
+<li><strong>Review before installing</strong> anyone else's skill &mdash; you are giving instructions (and sometimes scripts) to your agent.</li>
+</ul>
+
+<h2>Where to find good skills</h2>
+<p>SkillNest lists hundreds of open-source skills with install commands, organised by category and in topic guides such as <a href="/best/python/">Python</a>, <a href="/best/testing/">testing</a> and <a href="/best/seo/">SEO</a>. Curious how skills relate to MCP servers? Read <a href="/blog/claude-code-skills-vs-mcp-servers/">skills vs MCP servers</a>.</p>
+""",
+    },
+]
 
 
 def main() -> int:
