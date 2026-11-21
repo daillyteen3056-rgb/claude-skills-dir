@@ -173,6 +173,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <a class="brand" href="/">⬢ {SITE_NAME}</a>
 <a href="/">Browse</a>
 <a href="/category/development/">Categories</a>
+<a href="/best/">Best skills</a>
 <a href="/submit/">Submit a skill</a>
 <div class="spacer"></div>
 <a href="https://github.com/anthropics/skills" rel="noopener">GitHub</a>
@@ -268,6 +269,11 @@ def render_home(skills: list[dict]) -> str:
 </section>
 
 <section>
+<h2>Guides</h2>
+<div class="tag-cloud">{guides_cloud(skills)}</div>
+</section>
+
+<section>
 <h2>Categories</h2>
 <div class="tag-cloud">{cats_html}</div>
 </section>
@@ -308,6 +314,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
     install_block = (
         f"<pre><code>{esc(cmd)}</code></pre>\n"
         f'<p>Restart Claude Code afterwards. See the <a href="{esc(s.get("repo_url", "#"))}" rel="noopener">README</a> for skill-specific setup.</p>'
+        f'<p>Using Codex CLI? Copy the same folder to <code>~/.codex/skills/{esc(s["slug"])}</code> instead.</p>'
     )
     faq, faq_jsonld = faq_block(s, cmd)
 
@@ -712,6 +719,137 @@ SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Se
 </script>"""
 
 
+# --- Round 3: best-of guides, llms.txt, IndexNow --------------------------------
+INDEXNOW_KEY = "e33b9eaee844da66f9e785d5f65d9cbe"
+BEST_TOPICS = [
+    ("seo", "SEO", r"\bseo\b|search engine|serp|backlink|ai-visibility"),
+    ("marketing", "Marketing", r"marketing|\bads\b|copywrit|growth|social media"),
+    ("writing", "Writing", r"writing|blog|humaniz|copy|essay"),
+    ("video", "Video", r"video|youtube|tiktok|remotion|shorts"),
+    ("design", "UI Design", r"\bui\b|ui-ux|design|figma|tailwind|frontend"),
+    ("python", "Python", r"python|pytest|django|fastapi"),
+    ("react", "React & Next.js", r"\breact\b|nextjs|next\.js"),
+    ("testing", "Testing", r"\btests?\b|testing|playwright|e2e|\bqa\b"),
+    ("git", "Git & GitHub", r"\bgit\b|github|commit|pull request"),
+    ("docker", "Docker & DevOps", r"docker|kubernetes|devops|ci/cd|deploy"),
+    ("security", "Security", r"security|pentest|vulnerab|audit"),
+    ("data", "Data Analysis", r"\bdata\b|analytics|\bsql\b|dashboard|chart"),
+    ("research", "Research", r"research|paper|arxiv|literature"),
+    ("documents", "PDF & Documents", r"\bpdf\b|docx|document|markdown"),
+    ("obsidian", "Obsidian & Notes", r"obsidian|note-taking|\bnotes\b"),
+    ("automation", "Automation", r"automat|workflow|browser|scrap|crawl"),
+    ("mcp", "MCP", r"\bmcp\b"),
+    ("game-dev", "Game Development", r"godot|\bgame|unity|bevy"),
+]
+
+
+def skill_text(s: dict) -> str:
+    return " ".join([s.get("name") or "", s.get("slug") or "", s.get("short_description") or "",
+                     " ".join(s.get("tags") or [])]).lower()
+
+
+def best_pages(skills: list[dict], min_items: int = 5, top: int = 20) -> list[tuple[str, str, list[dict]]]:
+    out = []
+    for slug, label, pattern in BEST_TOPICS:
+        rx = _re.compile(pattern)
+        items = [s for s in skills if rx.search(skill_text(s))]
+        if len(items) >= min_items:
+            out.append((slug, label, by_stars(items)[:top]))
+    return out
+
+
+def render_best(slug: str, label: str, items: list[dict]) -> str:
+    year = datetime.now().year
+    title = f"Best {label} Claude Code Skills ({year})"
+    desc = (f"The top {len(items)} open-source Claude Code skills for {label.lower()}, ranked by GitHub stars, "
+            f"with what each one does and a one-line install command.")
+    rows = []
+    for i, s in enumerate(items, 1):
+        rows.append(
+            f'<li style="margin:0 0 22px"><h3 style="font-size:19px;color:#fff;margin-bottom:4px">{i}. '
+            f'<a href="/skills/{esc(s["slug"])}/">{esc(s["name"])}</a></h3>'
+            f'<p style="color:var(--muted);margin-bottom:6px">{esc(s.get("short_description", ""))}</p>'
+            f'<p style="font-size:13px;color:var(--muted)">{s.get("stars", 0)}★ · by {esc(s.get("author", ""))} · '
+            f'<a href="/category/{esc(s.get("category", "other"))}/">{esc(s.get("category", "other"))}</a></p>'
+            f'<pre style="margin-top:8px"><code>{esc(install_cmd(s))}</code></pre></li>')
+    others = " ".join(f'<a href="/best/{b}/">{esc(lb)}</a>' for b, lb, _ in best_pages_cache if b != slug)
+    body = f"""<div class="wrap">
+<div class="breadcrumb" style="margin-top:24px"><a href="/">Home</a> › <a href="/best/">Best skills</a> › {esc(label)}</div>
+<section class="hero" style="padding:30px 0 20px">
+<h1>{esc(title)}</h1>
+<p>{esc(desc)} Skills use the open SKILL.md format, so most also work in Codex CLI and other agents that support it.</p>
+</section>
+<section class="detail" style="display:block;padding-top:0">
+<ol style="list-style:none;padding:0">{''.join(rows)}</ol>
+<p style="color:var(--muted);font-size:14px">Ranking is by GitHub stars at the last update. Always review a skill's code before installing it.</p>
+</section>
+<section><h2>More guides</h2><div class="tag-cloud">{others}</div></section>
+</div>"""
+    ld = {"@context": "https://schema.org", "@type": "ItemList", "name": title, "itemListElement": [
+        {"@type": "ListItem", "position": i, "url": f"{SITE_URL}/skills/{s['slug']}/", "name": s["name"]}
+        for i, s in enumerate(items, 1)]}
+    return layout(title=f"{title} — {SITE_NAME}", description=desc, body=body, canonical=f"/best/{slug}/",
+                  extra_head=f'<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>')
+
+
+def render_best_index(bests: list[tuple[str, str, list[dict]]]) -> str:
+    cards = "\n".join(
+        f'<article class="card"><h3><a href="/best/{b}/">Best {esc(lb)} skills</a></h3>'
+        f'<p>Top {len(items)} picks, led by {esc(items[0]["name"])}.</p></article>' for b, lb, items in bests)
+    body = f"""<div class="wrap">
+<section class="hero" style="padding:50px 0 30px">
+<h1>Best Claude Code skills by topic</h1>
+<p>Topic guides: the most-starred open-source skills for each use case, ranked by GitHub stars, with install commands.</p>
+</section>
+<section><div class="grid">{cards}</div></section>
+</div>"""
+    return layout(title=f"Best Claude Code skills by topic — {SITE_NAME}",
+                  description="Topic guides to the best open-source Claude Code skills: SEO, Python, testing, design, video and more.",
+                  body=body, canonical="/best/")
+
+
+def guides_cloud(skills: list[dict]) -> str:
+    return " ".join(f'<a href="/best/{b}/">Best {esc(lb)} skills</a>' for b, lb, _ in best_pages(skills))
+
+
+def write_llms(skills: list[dict], bests: list[tuple[str, str, list[dict]]]) -> None:
+    cats = sorted({s.get("category", "other") for s in skills})
+    lines = [f"# {SITE_NAME}", "",
+             f"> {SITE_NAME} is an independent directory of {len(skills)} open-source Claude Code skills "
+             "(SKILL.md format), with categories, topic guides, install commands and a public JSON feed. "
+             "Not affiliated with Anthropic.", "",
+             "## Key pages", f"- [Home]({SITE_URL}/): top skills and search",
+             f"- [Best skills by topic]({SITE_URL}/best/): topic guides ranked by GitHub stars",
+             f"- [All skills as JSON]({SITE_URL}/data/skills.json): name, description, category, tags, stars, repo",
+             f"- [Sitemap]({SITE_URL}/sitemap.xml)", "", "## Topic guides"]
+    lines += [f"- [Best {lb} skills]({SITE_URL}/best/{b}/)" for b, lb, _ in bests]
+    lines += ["", "## Categories"]
+    lines += [f"- [{c.replace('-', ' ').title()}]({SITE_URL}/category/{c}/)" for c in cats]
+    lines += ["", "## Top skills"]
+    lines += [f"- [{s['name']}]({SITE_URL}/skills/{s['slug']}/): {s.get('short_description', '')}" for s in by_stars(skills)[:50]]
+    write_file("llms.txt", "\n".join(lines) + "\n")
+
+
+def indexnow_ping(urls: list[str]) -> None:
+    if os.environ.get("CF_PAGES_BRANCH") != "main":
+        print("[indexnow] skipped (not a production build)")
+        return
+    import urllib.request
+    host = SITE_URL.split("://", 1)[1]
+    payload = json.dumps({"host": host, "key": INDEXNOW_KEY, "keyLocation": f"{SITE_URL}/{INDEXNOW_KEY}.txt",
+                          "urlList": [f"{SITE_URL}{u}" for u in urls][:10000]}).encode()
+    req = urllib.request.Request("https://api.indexnow.org/indexnow", data=payload,
+                                 headers={"Content-Type": "application/json; charset=utf-8"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            print(f"[indexnow] submitted {len(urls)} URLs, HTTP {r.status}")
+    except Exception as e:  # never fail the build because of a ping
+        print(f"[indexnow] ping failed: {e}")
+
+
+best_pages_cache: list[tuple[str, str, list[dict]]] = []
+
+
 def main() -> int:
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -779,6 +917,15 @@ def main() -> int:
         urls.append(f"/compare/{a['slug']}-vs-{b['slug']}/")
         compare_count += 1
 
+    # Best-of guides
+    bests = best_pages(skills)
+    best_pages_cache[:] = bests
+    for slug, label, items in bests:
+        write_file(f"best/{slug}/index.html", render_best(slug, label, items))
+        urls.append(f"/best/{slug}/")
+    write_file("best/index.html", render_best_index(bests))
+    urls.append("/best/")
+
     # Submit
     write_file("submit/index.html", render_submit())
     urls.append("/submit/")
@@ -790,6 +937,8 @@ def main() -> int:
     write_sitemap(urls, {f"/skills/{s['slug']}/": (s.get("updated_at") or "")[:10] for s in skills})
     write_robots()
     write_rss(skills)
+    write_llms(skills, bests)
+    write_file(f"{INDEXNOW_KEY}.txt", INDEXNOW_KEY)
 
     # Cloudflare Pages config + 404
     write_file("_headers", CF_HEADERS)
@@ -803,6 +952,7 @@ def main() -> int:
     print(f"[gen] compare pages:  {compare_count}")
     print(f"[gen] total URLs:     {len(urls)}")
     print(f"[gen] output:         {OUT}")
+    indexnow_ping(urls)
     return 0
 
 
