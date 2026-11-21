@@ -504,12 +504,93 @@ NOT_FOUND = """<!doctype html>
 <a href="/">← Browse all skills</a></div></body></html>"""
 
 
+# --- Data cleanup at build time (scraper output stays untouched) ---------------
+import re as _re
+
+FAKE_SEEDS = {"claude-api", "code-review", "dataviz", "deep-research", "docs",
+              "google-workspace", "loop", "plugin-authoring", "schedule"}
+LEAKED = {"claude-code", "free-claude-code", "system-prompts-leaks"}
+SEED_URLS = {s: f"https://github.com/anthropics/skills/tree/main/skills/{s}"
+             for s in ("docx", "pdf", "pptx", "xlsx", "skill-creator")}
+SEED_URLS["security-review"] = "https://github.com/anthropics/claude-code-security-review"
+SKILL_RX = _re.compile(r"claude|skill|\bmcp\b|anthropic|codex|agent", _re.I)
+CATEGORY_OVERRIDES = {slug: cat for cat, slugs in {
+    "game-dev": ["godogen", "godotmaker"],
+    "design": ["oil-ui", "motion-dev-animations-skill"],
+    "content-creation": ["narrator-ai-cli-skill", "nano-banana-pro-prompts-recommend-skill", "banana-claude",
+                         "video-fetcher-to-markdown", "claude-shorts", "humanizer-skill", "html-explainer",
+                         "claude-repurpose", "khan-explainer"],
+    "business": ["court-skill", "hiring-panel-skill", "hormozi-skills", "on-page-seo",
+                 "product-manager-skills", "orangeo-ai-visibility-skill"],
+    "meta": ["one-skill-to-rule-them-all", "soul-md", "skillcompass", "attention-control"],
+    "development": ["pinme", "chisle", "antivibe", "claude-skill-web-clone", "abide", "ai-agent-team",
+                    "claude-code-rails-upgrade-skill", "building-with-typesafe-jev", "dex"],
+    "research": ["answer-me-with-html", "llm-council-skill", "grazer-skill"],
+    "document-processing": ["ai-doc-gen"],
+    "reference": ["claude-code-for-beginners"],
+    "integrations": ["application-skills", "vast-cli", "aelf-skills"],
+    "automation": ["job-application-agent"],
+    "lifestyle": ["qingsheng-skill"],
+}.items() for slug in slugs}
+CATEGORY_RULES = [(c, _re.compile(p)) for c, p in [
+    ("game-dev", r"godot|\bgame|unity|bevy|unreal"),
+    ("security", r"security|pentest|vulnerab|audit|\bctf\b"),
+    ("design", r"\bui\b|ui-ux|design|figma|tailwind|animation|frontend"),
+    ("content-creation", r"video|image|tts|youtube|tiktok|podcast|writing|content|copywrit|humaniz"),
+    ("business", r"\bseo\b|marketing|sales|business|\bads\b|resume|\bjob|career|product-manager|startup"),
+    ("research", r"research|paper|arxiv|literature|scholar"),
+    ("document-processing", r"\bpdf\b|docx|markdown|document|obsidian|notes|excel|pptx"),
+    ("charts", r"chart|analytics|\bsql\b|visualiz|dashboard|\bdata\b"),
+    ("automation", r"automat|workflow|cron|browser|scrap|crawl"),
+    ("integrations", r"\bmcp\b|integration|slack|notion|api\b|telegram|discord"),
+    ("meta", r"skill-manag|prompt|memory|context|meta-skill|skills? (hub|collection|library)|awesome"),
+    ("development", r"code|coding|dev|refactor|test|git|programming|framework|react|python|rust|typescript"),
+]]
+
+
+def clean_skills(raw: list[dict]) -> list[dict]:
+    out: list[dict] = []
+    seen: set[str] = set()
+    for s in raw:
+        slug = s.get("slug", "")
+        if slug in FAKE_SEEDS or slug in LEAKED:
+            continue
+        text = " ".join([s.get("name") or "", slug, s.get("short_description") or "",
+                         " ".join(s.get("tags") or [])]).lower()
+        if slug in SEED_URLS:
+            s["repo_url"] = s["author_url"] = SEED_URLS[slug]
+        elif not SKILL_RX.search(text):
+            continue  # not a Claude skill (generic awesome-lists etc.)
+        if slug in CATEGORY_OVERRIDES:
+            s["category"] = CATEGORY_OVERRIDES[slug]
+        elif s.get("category", "other") == "other":
+            for cat, rx in CATEGORY_RULES:
+                if rx.search(text):
+                    s["category"] = cat
+                    break
+        if not s.get("short_description"):
+            s["short_description"] = f"{s.get('name', slug)} — a Claude Code skill by {s.get('author', 'unknown')}."
+        if slug in ("skills", "claude-skills"):
+            m = _re.search(r"github\.com/([^/]+)/([^/#?]+)", s.get("repo_url") or "")
+            if m:
+                s["slug"] = f"{m.group(1)}-{m.group(2)}".lower()
+        if s["slug"] in seen:
+            continue
+        seen.add(s["slug"])
+        s["featured"] = False
+        out.append(s)
+    claude_tagged = [x for x in out if any("claude" in t for t in (x.get("tags") or []))]
+    for s in sorted(claude_tagged, key=lambda x: -(x.get("stars") or 0))[:6]:
+        s["featured"] = True
+    return out
+
+
 def main() -> int:
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True, exist_ok=True)
 
-    skills = json.loads(DATA.read_text(encoding="utf-8"))
+    skills = clean_skills(json.loads(DATA.read_text(encoding="utf-8")))
     print(f"[gen] {len(skills)} skills")
 
     urls: list[str] = ["/"]
@@ -576,7 +657,7 @@ def main() -> int:
     urls.append("/submit/")
 
     # Data endpoint
-    write_file("data/skills.json", DATA.read_text(encoding="utf-8"))
+    write_file("data/skills.json", json.dumps(skills, ensure_ascii=False, indent=2))
 
     # Sitemap, robots, RSS
     write_sitemap(urls)
