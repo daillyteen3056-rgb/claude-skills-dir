@@ -357,7 +357,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 <div class="row"><span>Stars</span><span>{s.get('stars', 0)}</span></div>
 <div class="row"><span>Updated</span><span>{esc(s.get('updated_at', ''))}</span></div>
 <a class="cta" href="{esc(s.get('repo_url', '#'))}" rel="noopener">View on GitHub →</a>
-{promo_block_compact()}
+{sidebar_promo(s)}
 </aside>
 </div>
 </div>"""
@@ -779,6 +779,7 @@ def render_best(slug: str, label: str, items: list[dict]) -> str:
 <h1>{esc(title)}</h1>
 <p>{esc(desc)} Skills use the open SKILL.md format, so most also work in Codex CLI and other agents that support it.</p>
 </section>
+{seo_promo_full('best-' + slug) if slug in SEO_PROMO_TOPICS else ''}
 <section class="detail" style="display:block;padding-top:0">
 <ol style="list-style:none;padding:0">{''.join(rows)}</ol>
 <p style="color:var(--muted);font-size:14px">Ranking is by GitHub stars at the last update. Always review a skill's code before installing it.</p>
@@ -848,6 +849,42 @@ def indexnow_ping(urls: list[str]) -> None:
 
 
 best_pages_cache: list[tuple[str, str, list[dict]]] = []
+
+
+# --- SEO pack promo ---------------------------------------------------------------
+SEO_PACK_URL = "https://daillyteen.gumroad.com/l/rxwob"
+SEO_PROMO_TOPICS = {"seo", "marketing", "writing"}
+SEO_SKILL_RX = _re.compile(r"\bseo\b|marketing|backlink|\bserp\b|ai-visibility|\bgeo\b|\baeo\b")
+
+
+def seo_url(placement: str) -> str:
+    return f"{SEO_PACK_URL}?utm_source=skillnest&utm_medium=directory&utm_campaign={placement}"
+
+
+def seo_promo_full(placement: str) -> str:
+    return f"""<a class="promo" href="{esc(seo_url(placement))}" target="_blank" rel="noopener sponsored" style="text-decoration:none">
+<div class="body">
+<span class="tag">Sponsored</span>
+<h3>SEO &amp; Programmatic-SEO Skills Pack — $9</h3>
+<p>6 Claude Code skills to audit, fix and scale SEO, plus the real case study of fixing this directory. One-time buy.</p>
+</div>
+<span class="btn">Get the pack<b>→</b></span>
+</a>"""
+
+
+def seo_promo_compact() -> str:
+    return f"""<a class="promo compact" href="{esc(seo_url('skill-sidebar-seo'))}" target="_blank" rel="noopener sponsored" style="text-decoration:none">
+<span class="tag">Sponsored</span>
+<h3 style="font-size:16px">Doing SEO with Claude?</h3>
+<p>SEO &amp; pSEO Skills Pack — 6 skills + a real case study. $9.</p>
+<span class="btn">View on Gumroad →</span>
+</a>"""
+
+
+def sidebar_promo(s: dict) -> str:
+    if SEO_SKILL_RX.search(skill_text(s)):
+        return seo_promo_compact()
+    return promo_block_compact()
 
 
 def main() -> int:
