@@ -16,6 +16,7 @@ Run: `python build.py`
 from __future__ import annotations
 
 import html
+from collections import Counter
 import itertools
 import json
 import os
@@ -160,6 +161,8 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
 <meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="{SITE_URL}/og.png">
+<meta name="twitter:image" content="{SITE_URL}/og.png">
 <meta name="theme-color" content="#0a0a0f">
 <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23a78bfa"/><text x="32" y="44" font-family="sans-serif" font-size="32" font-weight="800" fill="white" text-anchor="middle">C</text></svg>'>
 <style>{CSS}</style>
@@ -234,7 +237,7 @@ def promo_block_compact() -> str:
 
 def render_home(skills: list[dict]) -> str:
     featured = [s for s in skills if s.get("featured")][:6]
-    all_skills = skills
+    all_skills = sorted(skills, key=lambda x: -(x.get("stars") or 0))[:30]
     categories = sorted({s.get("category", "other") for s in skills})
     tags = sorted({t for s in skills for t in (s.get("tags") or [])})
 
@@ -244,7 +247,7 @@ def render_home(skills: list[dict]) -> str:
         f'<a href="/category/{esc(c)}/">{esc(c.replace("-", " ").title())}</a>'
         for c in categories
     )
-    tags_html = " ".join(f'<a href="/tag/{esc(t)}/">{esc(t)}</a>' for t in tags[:40])
+    tags_html = " ".join(f'<a href="/tag/{esc(t)}/">{esc(t)}</a>' for t in [t for t, _n in Counter(t for s in skills for t in (s.get("tags") or [])).most_common(40)])
 
     body = f"""<div class="wrap">
 <section class="hero">
@@ -269,7 +272,7 @@ def render_home(skills: list[dict]) -> str:
 </section>
 
 <section>
-<h2>All skills ({len(skills)})</h2>
+<h2>Top 30 skills <span style="font-size:15px;color:var(--muted);font-weight:400">of {len(skills)} — browse the categories above for the rest</span></h2>
 <div class="grid">{all_html}</div>
 </section>
 
@@ -288,7 +291,7 @@ def render_home(skills: list[dict]) -> str:
 
 def render_skill(s: dict, all_skills: list[dict]) -> str:
     related = [
-        x for x in all_skills
+        x for x in sorted(all_skills, key=lambda y: -(y.get("stars") or 0))
         if x["slug"] != s["slug"] and x.get("category") == s.get("category")
     ][:3]
     related_html = "\n".join(skill_card(r) for r in related) or "<p>No related skills.</p>"
@@ -299,12 +302,14 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
         if triggers else "<p>No specific triggers listed.</p>"
     )
 
+    cmd = install_cmd(s)
     install_block = (
-        f"<pre><code># In your Claude Code session\n"
-        f"/plugin install {esc(s['slug'])}</code></pre>"
+        f"<pre><code>{esc(cmd)}</code></pre>\n"
+        f'<p>Restart Claude Code afterwards. See the <a href="{esc(s.get("repo_url", "#"))}" rel="noopener">README</a> for skill-specific setup.</p>'
     )
+    faq, faq_jsonld = faq_block(s, cmd)
 
-    jsonld = jsonld_software_app(s)
+    jsonld = jsonld_software_app(s) + faq_jsonld
     body = f"""<div class="wrap">
 <div class="detail">
 <main>
@@ -326,6 +331,8 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 <div class="tag-cloud">
 {''.join(f'<a href="/tag/{esc(t)}/">{esc(t)}</a>' for t in (s.get('tags') or []))}
 </div>
+
+{faq}
 
 <div class="related">
 <h2>Related skills</h2>
@@ -355,7 +362,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 
 
 def render_listing(title: str, description: str, skills: list[dict], canonical: str) -> str:
-    cards = "\n".join(skill_card(s) for s in skills) or "<p>No skills in this group yet.</p>"
+    cards = "\n".join(skill_card(s) for s in sorted(skills, key=lambda x: -(x.get("stars") or 0))) or "<p>No skills in this group yet.</p>"
     body = f"""<div class="wrap">
 <section class="hero" style="padding:50px 0 30px">
 <h1>{esc(title)}</h1>
@@ -430,10 +437,10 @@ def write_file(rel: str, content: str) -> None:
     p.write_text(content, encoding="utf-8")
 
 
-def write_sitemap(urls: list[str]) -> None:
+def write_sitemap(urls: list[str], lastmods: dict | None = None) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     items = "\n".join(
-        f"<url><loc>{SITE_URL}{u}</loc><lastmod>{now}</lastmod></url>"
+        f"<url><loc>{SITE_URL}{u}</loc><lastmod>{(lastmods or {}).get(u) or now}</lastmod></url>"
         for u in urls
     )
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -585,6 +592,54 @@ def clean_skills(raw: list[dict]) -> list[dict]:
     return out
 
 
+# --- SEO helpers ---------------------------------------------------------------
+
+
+def install_cmd(s: dict) -> str:
+    slug = s["slug"]
+    repo = (s.get("repo_url") or "").rstrip("/")
+    base, _, sub = repo.partition("/tree/")
+    if sub and "/" in sub:
+        path = sub.split("/", 1)[1]
+        return (f"git clone --depth 1 {base}.git /tmp/{slug}-src\n"
+                f"cp -r /tmp/{slug}-src/{path} ~/.claude/skills/{slug}")
+    return f"git clone --depth 1 {repo}.git ~/.claude/skills/{slug}"
+
+
+def faq_block(s: dict, cmd: str) -> tuple[str, str]:
+    name, author = s["name"], s.get("author", "its author")
+    cat = s.get("category", "other")
+    desc = s.get("long_description") or s.get("short_description") or ""
+    stars = s.get("stars") or 0
+    qa = [
+        (f"What is {name}?", desc or f"{name} is a Claude Code skill by {author}."),
+        (f"How do I install {name} in Claude Code?",
+         f"Clone it into your personal skills folder: {cmd.replace(chr(10), ' && ')} — then restart Claude Code."),
+        (f"Is {name} free?",
+         f"{name} is open source on GitHub ({stars} stars at last check) and published by {author}."),
+        (f"What are alternatives to {name}?",
+         f"Browse other {cat.replace('-', ' ')} skills in the {cat.replace('-', ' ').title()} category of this directory."),
+    ]
+    items = "".join(f"<h3 style=\"font-size:16px;color:#fff;margin:18px 0 6px\">{esc(q)}</h3><p>{esc(a)}</p>" for q, a in qa)
+    html_block = f'<div class="section-h">FAQ</div>\n<div class="faq">{items}</div>'
+    data = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
+        {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in qa]}
+    return html_block, f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
+
+
+def compare_pairs(skills: list[dict], per_cat: int = 5, limit: int = 120) -> list[tuple[dict, dict]]:
+    by_cat: dict[str, list[dict]] = {}
+    for s in skills:
+        by_cat.setdefault(s.get("category", "other"), []).append(s)
+    pairs: list[tuple[dict, dict]] = []
+    for cat, items in sorted(by_cat.items()):
+        if cat == "other":
+            continue
+        top = sorted(items, key=lambda x: -(x.get("stars") or 0))[:per_cat]
+        pairs.extend(itertools.combinations(top, 2))
+    return pairs[:limit]
+
+
 def main() -> int:
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -643,7 +698,7 @@ def main() -> int:
     top = [s for s in skills if s.get("featured")] + skills
     seen_pairs = set()
     compare_count = 0
-    for a, b in itertools.combinations(top[:12], 2):
+    for a, b in compare_pairs(skills):
         key = tuple(sorted([a["slug"], b["slug"]]))
         if key in seen_pairs or a["slug"] == b["slug"]:
             continue
@@ -660,13 +715,15 @@ def main() -> int:
     write_file("data/skills.json", json.dumps(skills, ensure_ascii=False, indent=2))
 
     # Sitemap, robots, RSS
-    write_sitemap(urls)
+    write_sitemap(urls, {f"/skills/{s['slug']}/": (s.get("updated_at") or "")[:10] for s in skills})
     write_robots()
     write_rss(skills)
 
     # Cloudflare Pages config + 404
     write_file("_headers", CF_HEADERS)
     write_file("404.html", NOT_FOUND)
+    if (ROOT / "og.png").exists():
+        shutil.copy(ROOT / "og.png", OUT / "og.png")
 
     print(f"[gen] skill pages:    {len(skills)}")
     print(f"[gen] category pages: {len(cats)}")
