@@ -42,3 +42,9 @@ claude-skills-dir/
 - **Week 3:** 50+ skills, submit sitemap to Google/Bing Search Console
 - **Month 2-3:** 200 skills, pSEO tag pages indexed
 - **Month 4-6:** 10-50k views/month organic, first featured listing sales
+
+## License & attribution
+
+The code in this repository (scraper, site generator, workflows) is [MIT-licensed](LICENSE).
+
+SkillNest is an index, not a mirror: it does not copy or redistribute any skill's files. For each listed skill, `data/skills.json` stores only metadata — name, author (with a link to their profile), a short description, trigger phrases, category, tags and star count — plus the URL of the upstream repository. Every skill page credits the author and links back to that repository. Each skill stays under its own upstream license and belongs to its authors. If you maintain a listed skill and want it changed or removed, open an issue or email hi@skillnest.dev.
