@@ -270,6 +270,11 @@ def render_home(skills: list[dict]) -> str:
 </section>
 
 <section>
+<h2>From the blog</h2>
+<div class="tag-cloud">{blog_cloud()}</div>
+</section>
+
+<section>
 <h2>Guides</h2>
 <div class="tag-cloud">{guides_cloud(skills)}</div>
 </section>
@@ -316,6 +321,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
         f"<pre><code>{esc(cmd)}</code></pre>\n"
         f'<p>Claude Code picks up new skills automatically (run <code>/reload-skills</code> if your skills folder is brand new). See the <a href="{esc(s.get("repo_url", "#"))}" rel="noopener">README</a> for skill-specific setup.</p>'
         f'<p>Using Codex CLI? Copy the same folder to <code>~/.codex/skills/{esc(s["slug"])}</code> instead.</p>'
+        "<p>On Windows? Follow the <a href='/blog/install-claude-code-skills-windows/'>Windows install guide</a>. New to skills? Read the <a href='/blog/claude-code-skills-beginners-guide/'>beginner's guide</a> or <a href='/blog/claude-code-skills-vs-mcp-servers/'>Claude Code skills vs MCP servers</a>.</p>"
     )
     faq, faq_jsonld = faq_block(s, cmd)
 
@@ -1110,6 +1116,10 @@ description: Write a CHANGELOG entry for the current changes. Use when the user 
 """,
     },
 ]
+
+
+def blog_cloud() -> str:
+    return "".join(f'<a href="/blog/{p["slug"]}/">{esc(p["title"])}</a>' for p in BLOG_POSTS)
 
 
 def main() -> int:
