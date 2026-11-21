@@ -43,7 +43,7 @@ YANDEX_VERIFY = os.environ.get("YANDEX_VERIFY", "")
 GUMROAD_URL = os.environ.get("GUMROAD_URL", "https://daillyteen.gumroad.com/l/wapct")
 GUMROAD_TITLE = "Claude Code Skills Pack"
 GUMROAD_PRICE = "$19"
-GUMROAD_PITCH = "Curated, battle-tested pack of production Claude Code skills. One-time buy, lifetime updates."
+GUMROAD_PITCH = "6 ready-to-use Claude Code skills for tests, commits, PR write-ups, docstrings, .env files and Dockerfiles. One-time buy, free updates through Nov 2027."
 
 
 def gumroad_url(placement: str) -> str:
@@ -230,7 +230,7 @@ def promo_block_compact() -> str:
     return f"""<a class="promo compact" href="{esc(gumroad_url('skill-sidebar'))}" target="_blank" rel="noopener sponsored" style="text-decoration:none">
 <span class="tag">Sponsored</span>
 <h3 style="font-size:16px">Need the full pack?</h3>
-<p>{esc(GUMROAD_TITLE)} — curated, production-ready. {esc(GUMROAD_PRICE)}.</p>
+<p>6 dev skills that auto-trigger in Claude Code. {esc(GUMROAD_PRICE)}.</p>
 <span class="btn">View on Gumroad →</span>
 </a>"""
 
@@ -356,7 +356,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 </div>"""
     return layout(
         title=f"{s['name']} — Claude Code Skill: Install & Usage",
-        description=f"{s.get('short_description', '')} Install command, FAQ and alternatives. {s.get('stars', 0)}★ on GitHub.",
+        description=f"{s.get('short_description', '').rstrip('.')}. Install command, FAQ and alternatives. {s.get('stars', 0)}★ on GitHub.",
         body=body,
         canonical=f"/skills/{s['slug']}/",
         extra_head=jsonld,
