@@ -174,6 +174,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <a href="/">Browse</a>
 <a href="/category/development/">Categories</a>
 <a href="/best/">Best skills</a>
+<a href="/blog/">Blog</a>
 <a href="/submit/">Submit a skill</a>
 <div class="spacer"></div>
 <a href="https://github.com/anthropics/skills" rel="noopener">GitHub</a>
@@ -761,7 +762,7 @@ def best_pages(skills: list[dict], min_items: int = 5, top: int = 20) -> list[tu
 def render_best(slug: str, label: str, items: list[dict]) -> str:
     year = datetime.now().year
     title = f"Best {label} Claude Code Skills ({year})"
-    desc = (f"The top {len(items)} open-source Claude Code skills for {label.lower()}, ranked by GitHub stars, "
+    desc = (f"The top {len(items)} open-source Claude Code skills for {label}, ranked by GitHub stars, "
             f"with what each one does and a one-line install command.")
     rows = []
     for i, s in enumerate(items, 1):
@@ -824,6 +825,7 @@ def write_llms(skills: list[dict], bests: list[tuple[str, str, list[dict]]]) -> 
              f"- [All skills as JSON]({SITE_URL}/data/skills.json): name, description, category, tags, stars, repo",
              f"- [Sitemap]({SITE_URL}/sitemap.xml)", "", "## Topic guides"]
     lines += [f"- [Best {lb} skills]({SITE_URL}/best/{b}/)" for b, lb, _ in bests]
+    lines += ["", "## Blog"] + [f"- [{p['title']}]({SITE_URL}/blog/{p['slug']}/)" for p in BLOG_POSTS]
     lines += ["", "## Categories"]
     lines += [f"- [{c.replace('-', ' ').title()}]({SITE_URL}/category/{c}/)" for c in cats]
     lines += ["", "## Top skills"]
@@ -885,6 +887,92 @@ def sidebar_promo(s: dict) -> str:
     if SEO_SKILL_RX.search(skill_text(s)):
         return seo_promo_compact()
     return promo_block_compact()
+
+
+# --- Blog -----------------------------------------------------------------------------
+BLOG_POSTS = [
+    {
+        "slug": "8-seo-bugs-programmatic-seo-site",
+        "title": "8 SEO bugs Claude Code found in my programmatic-SEO site before launch",
+        "description": "A redirect rule that could 404 a whole site, 529 thin tag pages, self-comparison pages and more: what an AI audit of a static pSEO directory found, and the rule for each.",
+        "date": "2026-11-21",
+        "html": """
+<p>SkillNest is a programmatic-SEO directory: a Python script turns a JSON file of ~600 GitHub repositories into ~1,100 static pages on Cloudflare Pages. Programmatic SEO is great until it isn't &mdash; one wrong template rule is multiplied across every page.</p>
+<p>Before submitting the sitemap, I asked Claude Code to audit the generated build folder the way a technical SEO would. Here is what it found, and the rule each fix turned into.</p>
+
+<h2>1. A redirect rule that could 404 the whole site</h2>
+<p>The generator wrote <code>/* /404.html 404</code> into <code>_redirects</code>. On Cloudflare Pages, redirects are evaluated before static assets, so a catch-all rule can shadow real pages.</p>
+<p><strong>Rule:</strong> never use a catch-all rule for 404s on a host that already serves <code>404.html</code> automatically.</p>
+
+<h2>2. Hundreds of one-item tag pages</h2>
+<p>529 of 665 tag pages listed exactly one item &mdash; textbook thin content.</p>
+<p><strong>Rule:</strong> group pages need at least 3 items to be indexable. Below that they get <code>noindex,follow</code> and stay out of the sitemap.</p>
+
+<h2>3. Self-comparison pages</h2>
+<p>The &ldquo;A vs B&rdquo; generator paired featured items with themselves, producing pages like <em>docs vs docs</em>.</p>
+<p><strong>Rule:</strong> only compare items within the same category, never an item with itself, and cap the total.</p>
+
+<h2>4. The same broken install command on every page</h2>
+<p>Every skill page showed <code>/plugin install &lt;slug&gt;</code>, which does not work for most skills.</p>
+<p><strong>Rule:</strong> generate per-item content from the data &mdash; here a real <code>git clone</code> command, with a different command when the skill lives in a sub-folder of a larger repository.</p>
+
+<h2>5. lastmod was the build date</h2>
+<p>Every URL in the sitemap had the same <code>&lt;lastmod&gt;</code>: the time of the build. Search engines learn to ignore that.</p>
+<p><strong>Rule:</strong> use each record's real update date.</p>
+
+<h2>6. Junk in the dataset</h2>
+<p>The weekly scraper had pulled in generic &ldquo;awesome&rdquo; lists and even a repository of leaked proprietary source code.</p>
+<p><strong>Rule:</strong> filter at build time, not by hand, so the next scrape cannot bring the junk back.</p>
+
+<h2>7. Thin structured data</h2>
+<p><strong>Rule:</strong> SoftwareApplication + FAQPage + BreadcrumbList on item pages and ItemList on &ldquo;best of&rdquo; pages &mdash; using only facts that are visible on the page.</p>
+
+<h2>8. The domain move</h2>
+<p>The site moved from a free <code>pages.dev</code> subdomain to <code>skillnest.dev</code>.</p>
+<p><strong>Rule:</strong> 301 redirects that preserve path and query string, the new canonical host everywhere (sitemap, robots.txt, og:image), and Change of Address in Google Search Console.</p>
+
+<h2>The takeaway</h2>
+<p>Point the audit at the <strong>generator</strong>, not the generated HTML. Fix the HTML by hand and the next build quietly undoes your work.</p>
+<p>The checks above are packaged as Claude Code skills in the <a href="https://daillyteen.gumroad.com/l/rxwob?utm_source=skillnest&amp;utm_medium=blog&amp;utm_campaign=8-seo-bugs" rel="noopener sponsored">SEO &amp; Programmatic-SEO Skills Pack</a> ($9) &mdash; but everything in this post works without it. If you are building something similar, the <a href="/best/seo/">best SEO skills</a> guide is a good place to start.</p>
+""",
+    },
+]
+
+
+def render_post(p: dict) -> str:
+    url = f"/blog/{p['slug']}/"
+    body = f"""<div class="wrap">
+<div class="detail" style="display:block;max-width:760px">
+<div class="breadcrumb"><a href="/">Home</a> › <a href="/blog/">Blog</a> › {esc(p['title'])}</div>
+<h1>{esc(p['title'])}</h1>
+<p class="short">{esc(p['description'])}</p>
+<p style="color:var(--muted);font-size:14px;margin-bottom:28px">{SITE_NAME} · <time datetime="{p['date']}">{p['date']}</time></p>
+<article class="long">{p['html']}</article>
+</div>
+</div>"""
+    ld = {"@context": "https://schema.org", "@type": "BlogPosting", "headline": p["title"],
+          "description": p["description"], "datePublished": p["date"], "dateModified": p["date"],
+          "mainEntityOfPage": f"{SITE_URL}{url}", "image": f"{SITE_URL}/og.png",
+          "author": {"@type": "Organization", "name": SITE_NAME, "url": f"{SITE_URL}/"},
+          "publisher": {"@type": "Organization", "name": SITE_NAME, "url": f"{SITE_URL}/"}}
+    return layout(title=f"{p['title']} — {SITE_NAME}", description=p["description"], body=body,
+                  canonical=url, extra_head=f'<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>')
+
+
+def render_blog_index() -> str:
+    cards = "\n".join(
+        f'<article class="card"><h3><a href="/blog/{p["slug"]}/">{esc(p["title"])}</a></h3>'
+        f'<p>{esc(p["description"])}</p><div class="meta"><span>{p["date"]}</span></div></article>'
+        for p in sorted(BLOG_POSTS, key=lambda x: x["date"], reverse=True))
+    body = f"""<div class="wrap">
+<section class="hero" style="padding:50px 0 30px">
+<h1>Blog</h1>
+<p>Notes on building with Claude Code skills, programmatic SEO and running this directory.</p>
+</section>
+<section><div class="grid">{cards}</div></section>
+</div>"""
+    return layout(title=f"Blog — {SITE_NAME}", description="Notes on Claude Code skills, programmatic SEO and building SkillNest.",
+                  body=body, canonical="/blog/")
 
 
 def main() -> int:
@@ -962,6 +1050,13 @@ def main() -> int:
         urls.append(f"/best/{slug}/")
     write_file("best/index.html", render_best_index(bests))
     urls.append("/best/")
+
+    # Blog
+    for p in BLOG_POSTS:
+        write_file(f"blog/{p['slug']}/index.html", render_post(p))
+        urls.append(f"/blog/{p['slug']}/")
+    write_file("blog/index.html", render_blog_index())
+    urls.append("/blog/")
 
     # Submit
     write_file("submit/index.html", render_submit())
