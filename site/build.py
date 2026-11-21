@@ -27,6 +27,7 @@ ROOT = Path(__file__).parent
 PROJECT = ROOT.parent
 DATA = PROJECT / "data" / "skills.json"
 OUT = ROOT / "dist"
+MIN_TAG_INDEX = 3  # tags with fewer skills get noindex + stay out of sitemap
 
 SITE_NAME = os.environ.get("SITE_NAME", "Claude Skills")
 SITE_URL = os.environ.get("SITE_URL", "https://claude-skills.pages.dev").rstrip("/")
@@ -545,16 +546,17 @@ def main() -> int:
     for tag, items in tags.items():
         if len(items) < 1:
             continue
-        write_file(
-            f"tag/{tag}/index.html",
-            render_listing(
-                title=f'Skills tagged "{tag}"',
-                description=f"All Claude Code skills tagged with {tag} — {len(items)} match.",
-                skills=items,
-                canonical=f"/tag/{tag}/",
-            ),
+        page = render_listing(
+            title=f'Skills tagged "{tag}"',
+            description=f"All Claude Code skills tagged with {tag} — {len(items)} match{'es' if len(items) > 1 else ''}.",
+            skills=items,
+            canonical=f"/tag/{tag}/",
         )
-        urls.append(f"/tag/{tag}/")
+        if len(items) < MIN_TAG_INDEX:
+            page = page.replace('content="index,follow,max-image-preview:large"', 'content="noindex,follow"')
+        write_file(f"tag/{tag}/index.html", page)
+        if len(items) >= MIN_TAG_INDEX:
+            urls.append(f"/tag/{tag}/")
 
     # Compare pages — top 12 featured × 12 other = ~50 cross pairs
     top = [s for s in skills if s.get("featured")] + skills
@@ -562,7 +564,7 @@ def main() -> int:
     compare_count = 0
     for a, b in itertools.combinations(top[:12], 2):
         key = tuple(sorted([a["slug"], b["slug"]]))
-        if key in seen_pairs:
+        if key in seen_pairs or a["slug"] == b["slug"]:
             continue
         seen_pairs.add(key)
         write_file(f"compare/{a['slug']}-vs-{b['slug']}/index.html", render_compare(a, b))
@@ -583,7 +585,6 @@ def main() -> int:
 
     # Cloudflare Pages config + 404
     write_file("_headers", CF_HEADERS)
-    write_file("_redirects", CF_REDIRECTS)
     write_file("404.html", NOT_FOUND)
 
     print(f"[gen] skill pages:    {len(skills)}")
