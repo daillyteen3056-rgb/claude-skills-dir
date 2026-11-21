@@ -30,8 +30,8 @@ DATA = PROJECT / "data" / "skills.json"
 OUT = ROOT / "dist"
 MIN_TAG_INDEX = 3  # tags with fewer skills get noindex + stay out of sitemap
 
-SITE_NAME = os.environ.get("SITE_NAME", "Claude Skills")
-SITE_URL = os.environ.get("SITE_URL", "https://claude-skills.pages.dev").rstrip("/")
+SITE_NAME = os.environ.get("SITE_NAME", "SkillNest")
+SITE_URL = os.environ.get("SITE_URL", "https://skillnest.dev").rstrip("/")
 SITE_TAGLINE = "The directory for Claude Code skills, plugins, and agents"
 
 # Search engine verification tokens (safe to be public — they only prove ownership)
@@ -49,7 +49,7 @@ GUMROAD_PITCH = "6 ready-to-use Claude Code skills for tests, commits, PR write-
 def gumroad_url(placement: str) -> str:
     """Append UTM params for attribution."""
     sep = "&" if "?" in GUMROAD_URL else "?"
-    return f"{GUMROAD_URL}{sep}utm_source=claude-skills&utm_medium=directory&utm_campaign={placement}"
+    return f"{GUMROAD_URL}{sep}utm_source=skillnest&utm_medium=directory&utm_campaign={placement}"
 SITE_DESC = (
     "Discover 100+ open-source skills, plugins, and agents for Claude Code. "
     "Browse by category — document processing, charts, research, automation, security. "
@@ -422,7 +422,7 @@ def render_submit() -> str:
     body = """<div class="wrap">
 <section class="hero">
 <h1>Submit a skill</h1>
-<p>Built a Claude Code skill? Open a PR on our GitHub repo or email <code>hi@claude-skills.dev</code>. Include: name, GitHub URL, short description, category, tags.</p>
+<p>Built a Claude Code skill? Open a PR on our GitHub repo or email <code>hi@skillnest.dev</code>. Include: name, GitHub URL, short description, category, tags.</p>
 </section>
 </div>"""
     return layout(
