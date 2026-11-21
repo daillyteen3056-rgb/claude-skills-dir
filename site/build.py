@@ -258,6 +258,7 @@ def render_home(skills: list[dict]) -> str:
 <div><b>{len(categories)}</b>categories</div>
 <div><b>{len(tags)}</b>tags</div>
 </div>
+{SEARCH_HTML}
 {promo_block_full()}
 </section>
 
@@ -286,6 +287,7 @@ def render_home(skills: list[dict]) -> str:
         description=SITE_DESC,
         body=body,
         canonical="/",
+        extra_head=website_jsonld(),
     )
 
 
@@ -309,7 +311,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
     )
     faq, faq_jsonld = faq_block(s, cmd)
 
-    jsonld = jsonld_software_app(s) + faq_jsonld
+    jsonld = jsonld_software_app(s) + faq_jsonld + breadcrumb_jsonld(s)
     body = f"""<div class="wrap">
 <div class="detail">
 <main>
@@ -353,8 +355,8 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 </div>
 </div>"""
     return layout(
-        title=f"{s['name']} — Claude Code skill",
-        description=s.get("short_description", ""),
+        title=f"{s['name']} — Claude Code Skill: Install & Usage",
+        description=f"{s.get('short_description', '')} Install command, FAQ and alternatives. {s.get('stars', 0)}★ on GitHub.",
         body=body,
         canonical=f"/skills/{s['slug']}/",
         extra_head=jsonld,
@@ -640,6 +642,76 @@ def compare_pairs(skills: list[dict], per_cat: int = 5, limit: int = 120) -> lis
     return pairs[:limit]
 
 
+# --- SEO round 2 ---------------------------------------------------------------
+CAT_TOPIC = {
+    "automation": "automating workflows, browsers and recurring tasks",
+    "business": "marketing, SEO, sales, hiring and product work",
+    "charts": "data analysis, SQL, dashboards and visualization",
+    "content-creation": "video, images, writing and social content",
+    "design": "UI/UX, frontend design and animation",
+    "development": "coding, refactoring, testing and shipping software",
+    "document-processing": "PDF, Word, Excel, Markdown and notes",
+    "game-dev": "building games with Godot, Unity, Bevy and the web",
+    "integrations": "MCP servers, APIs and third-party apps",
+    "lifestyle": "everyday life and personal use",
+    "meta": "managing prompts, memory, context and other skills",
+    "reference": "learning Claude Code and reference material",
+    "research": "research, papers and multi-source synthesis",
+    "security": "security audits, pentesting and code review",
+}
+
+
+def by_stars(items: list[dict]) -> list[dict]:
+    return sorted(items, key=lambda x: -(x.get("stars") or 0))
+
+
+def category_desc(cat: str, items: list[dict]) -> str:
+    top = ", ".join(s["name"] for s in by_stars(items)[:3])
+    topic = CAT_TOPIC.get(cat, cat.replace("-", " "))
+    return (f"{len(items)} open-source Claude Code skills for {topic}, ranked by GitHub stars "
+            f"with one-line install commands. Top picks: {top}.")
+
+
+def breadcrumb_jsonld(s: dict) -> str:
+    cat = s.get("category", "other")
+    data = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": f"{SITE_URL}/"},
+        {"@type": "ListItem", "position": 2, "name": cat.replace("-", " ").title(), "item": f"{SITE_URL}/category/{cat}/"},
+        {"@type": "ListItem", "position": 3, "name": s["name"], "item": f"{SITE_URL}/skills/{s['slug']}/"},
+    ]}
+    return f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
+
+
+def website_jsonld() -> str:
+    data = {"@context": "https://schema.org", "@type": "WebSite", "name": SITE_NAME, "url": f"{SITE_URL}/",
+            "potentialAction": {"@type": "SearchAction", "target": f"{SITE_URL}/?q={{search_term_string}}",
+                                "query-input": "required name=search_term_string"}}
+    return f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
+
+
+SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Search skills by name, tag or use case…" aria-label="Search skills" autocomplete="off"></div>
+<div id="results" class="grid" style="margin-top:16px"></div>
+<script>
+(function(){
+  var q=document.getElementById('q'),out=document.getElementById('results'),data=null;
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function card(s){return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+(s.stars||0)+'\\u2605</span><span>by '+esc(s.author)+'</span></div></article>';}
+  function run(){
+    var v=q.value.trim().toLowerCase();
+    if(!v){out.innerHTML='';return;}
+    var terms=v.split(/\\s+/);
+    var hits=data.filter(function(s){var t=[s.name,s.slug,s.short_description,(s.tags||[]).join(' '),s.category].join(' ').toLowerCase();return terms.every(function(w){return t.indexOf(w)>-1;});});
+    hits.sort(function(a,b){return (b.stars||0)-(a.stars||0);});
+    out.innerHTML=hits.length?hits.slice(0,24).map(card).join(''):'<p style="color:var(--muted)">No skills match \\u201c'+esc(v)+'\\u201d.</p>';
+  }
+  function load(cb){if(data)return cb();fetch('/data/skills.json').then(function(r){return r.json();}).then(function(d){data=d;cb();});}
+  q.addEventListener('input',function(){load(run);});
+  var p=new URLSearchParams(location.search).get('q');
+  if(p){q.value=p;load(run);}
+})();
+</script>"""
+
+
 def main() -> int:
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -666,8 +738,8 @@ def main() -> int:
         write_file(
             f"category/{cat}/index.html",
             render_listing(
-                title=f"{cat.replace('-', ' ').title()} skills",
-                description=f"Claude Code skills in the {cat} category — {len(items)} indexed.",
+                title=f"Best {cat.replace('-', ' ').title()} Claude Code Skills ({len(items)})",
+                description=category_desc(cat, items),
                 skills=items,
                 canonical=f"/category/{cat}/",
             ),
@@ -683,7 +755,7 @@ def main() -> int:
         if len(items) < 1:
             continue
         page = render_listing(
-            title=f'Skills tagged "{tag}"',
+            title=f'Claude Code skills tagged "{tag}"',
             description=f"All Claude Code skills tagged with {tag} — {len(items)} match{'es' if len(items) > 1 else ''}.",
             skills=items,
             canonical=f"/tag/{tag}/",
