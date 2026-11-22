@@ -812,6 +812,7 @@ def render_best(slug: str, label: str, items: list[dict]) -> str:
 <h1>{esc(title)}</h1>
 <p>{esc(desc)} Skills use the open SKILL.md format, so most also work in Codex CLI and other agents that support it.</p>
 </section>
+{best_guide_html(slug, label, items)}
 {seo_promo_full('best-' + slug) if slug in SEO_PROMO_TOPICS else ''}
 <section class="detail" style="display:block;padding-top:0">
 <ol style="list-style:none;padding:0">{''.join(rows)}</ol>
@@ -1246,6 +1247,37 @@ def tidy_skill(s: dict) -> None:
         s["short_description_orig"] = desc
         s["short_description"] = (f"{s.get('name') or s.get('slug')}: a Claude Code skill by {s.get('author') or 'its author'}. "
                                   f"The original description is in {lang}; see the GitHub README for details.")
+
+
+try:
+    from best_guides import BEST_GUIDES
+except ImportError:  # guides file missing: pages still build without intros
+    BEST_GUIDES = {}
+
+
+def best_guide_html(slug: str, label: str, items: list[dict]) -> str:
+    guide = BEST_GUIDES.get(slug)
+    if not guide:
+        return ""
+    intro, prompts = guide
+    quick = ""
+    if items:
+        top = items[0]
+        cmd = install_cmd(top)
+        asks = "".join(f"<li>&ldquo;{esc(p)}&rdquo;</li>" for p in prompts)
+        quick = (
+            f'<h2 style="margin-top:22px">Quick start</h2>'
+            f'<p>Install the top pick, <a href="/skills/{esc(top["slug"])}/">{esc(top["name"])}</a>, with one command:</p>'
+            f'<pre><code>{esc(cmd)}</code></pre>'
+            f'<button type="button" data-cmd="{esc(cmd)}" style="font-size:12px;padding:4px 10px;border-radius:6px;'
+            f'border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button>'
+            f'<p style="margin-top:14px">Claude Code picks new skills up automatically. Then just ask, for example:</p>'
+            f'<ul>{asks}</ul>'
+            f'<p style="color:var(--muted);font-size:14px">On Windows? See the '
+            f'<a href="/blog/install-claude-code-skills-windows/">Windows install guide</a>.</p>'
+        )
+    return (f'<section class="detail" style="display:block;padding-top:0">'
+            f'<h2>How to use {esc(label)} skills in Claude Code</h2><p>{intro}</p>{quick}</section>')
 
 
 def main() -> int:
