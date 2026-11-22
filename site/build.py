@@ -173,6 +173,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <a class="brand" href="/">⬢ {SITE_NAME}</a>
 <a href="/">Browse</a>
 <a href="/category/development/">Categories</a>
+<a href="/new/">New</a>
 <a href="/best/">Best skills</a>
 <a href="/blog/">Blog</a>
 <a href="/submit/">Submit a skill</a>
@@ -268,6 +269,8 @@ def render_home(skills: list[dict]) -> str:
 <h2>Featured</h2>
 <div class="grid">{featured_html}</div>
 </section>
+
+{new_home(skills)}
 
 <section>
 <h2>From the blog</h2>
@@ -1139,6 +1142,63 @@ description: Write a CHANGELOG entry for the current changes. Use when the user 
 def blog_cloud() -> str:
     return "".join(f'<a href="/blog/{p["slug"]}/">{esc(p["title"])}</a>' for p in BLOG_POSTS)
 
+# --- Retention: /new/ page + subscribe box ----------------------------------
+ADDED_BASELINE = "2026-11-22"  # everything indexed before this date counts as "launch" stock
+SUBSCRIBE_URL = "https://daillyteen.gumroad.com/"
+
+
+def new_skills(skills: list[dict], limit: int = 60) -> list[dict]:
+    items = [s for s in skills if (s.get("added_at") or ADDED_BASELINE) > ADDED_BASELINE]
+    return sorted(items, key=lambda s: (s.get("added_at") or "", s.get("stars") or 0), reverse=True)[:limit]
+
+
+def subscribe_box() -> str:
+    return (
+        '<div style="margin:28px 0;padding:18px 20px;border:1px solid rgba(127,127,127,.35);border-radius:12px">'
+        "<strong>Get new Claude Code skills by email</strong>"
+        '<p style="margin:6px 0 12px">The index is rescanned from GitHub every week. Subscribe to hear about '
+        "notable new skills and new SkillNest packs. Free, unsubscribe anytime.</p>"
+        f'<a href="{SUBSCRIBE_URL}" rel="noopener" style="font-weight:600">Subscribe &rarr;</a>'
+        ' &nbsp;·&nbsp; <a href="/rss.xml">RSS feed</a> &nbsp;·&nbsp; <a href="/new/">New this week</a></div>'
+    )
+
+
+def new_home(skills: list[dict]) -> str:
+    fresh = new_skills(skills, limit=6)
+    if not fresh:
+        return subscribe_box()
+    cards = "\n".join(skill_card(s) for s in fresh)
+    return (
+        f'<section>\n<h2>New this week</h2>\n<div class="grid">{cards}</div>\n'
+        f'<p><a href="/new/">See all new skills &rarr;</a></p>\n</section>\n{subscribe_box()}'
+    )
+
+
+def render_new(items: list[dict]) -> str:
+    if items:
+        intro = (f"{len(items)} Claude Code skills added to the index recently, newest first. "
+                 "The list updates every week from a fresh GitHub scan.")
+        grid = '<div class="grid">' + "\n".join(skill_card(s) for s in items) + "</div>"
+    else:
+        intro = "The index is rescanned from GitHub every week; skills it discovers will appear here."
+        grid = '<p>No new skills since the last scan. Browse the <a href="/best/">best skills by topic</a> meanwhile.</p>'
+    body = f"""<div class="wrap">
+<section class="hero" style="padding:50px 0 30px">
+<h1>New Claude Code skills this week</h1>
+<p>{esc(intro)}</p>
+</section>
+{subscribe_box()}
+<section>
+{grid}
+</section>
+</div>"""
+    page = layout(title=f"New Claude Code skills this week — {SITE_NAME}",
+                  description="The newest Claude Code skills found on GitHub, updated weekly, with one-line install commands.",
+                  body=body, canonical="/new/")
+    if len(items) < 3:
+        page = page.replace('content="index,follow,max-image-preview:large"', 'content="noindex,follow"')
+    return page
+
 
 def main() -> int:
     if OUT.exists():
@@ -1206,6 +1266,12 @@ def main() -> int:
         write_file(f"compare/{a['slug']}-vs-{b['slug']}/index.html", render_compare(a, b))
         urls.append(f"/compare/{a['slug']}-vs-{b['slug']}/")
         compare_count += 1
+
+    # New this week
+    fresh = new_skills(skills)
+    write_file("new/index.html", render_new(fresh))
+    if len(fresh) >= 3:
+        urls.append("/new/")
 
     # Best-of guides
     bests = best_pages(skills)
