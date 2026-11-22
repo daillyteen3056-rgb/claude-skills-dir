@@ -298,7 +298,7 @@ def render_home(skills: list[dict]) -> str:
 </section>
 </div>"""
     return layout(
-        title=f"{SITE_NAME} — {SITE_TAGLINE}",
+        title=f"Claude Code Skills Directory: Search & Install {len(skills)} Skills | {SITE_NAME}",
         description=SITE_DESC,
         body=body,
         canonical="/",
@@ -335,7 +335,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 <div class="breadcrumb">
 <a href="/">Home</a> › <a href="/category/{esc(s.get('category', 'other'))}/">{esc(s.get('category', 'other').replace('-', ' ').title())}</a> › {esc(s['name'])}
 </div>
-<h1>{esc(s['name'])}</h1>
+<h1>{esc(s['name'])} <span style="font-weight:400;opacity:.6">· Claude Code skill</span></h1>
 <p class="short">{esc(s.get('short_description', ''))}</p>
 
 <p class="long">{esc(s.get('long_description', ''))}</p>
@@ -438,8 +438,8 @@ def render_compare(a: dict, b: dict) -> str:
 </section>
 </div>"""
     return layout(
-        title=f"{a['name']} vs {b['name']} — {SITE_NAME}",
-        description=f"Compare {a['name']} and {b['name']} as Claude Code skills — features, price, difficulty.",
+        title=f"{a['name']} vs {b['name']}: Claude Code Skills Compared — {SITE_NAME}",
+        description=f"{a['name']} vs {b['name']}: compare these two Claude Code skills side by side — what each does, GitHub stars, price and difficulty.",
         body=body,
         canonical=f"/compare/{a['slug']}-vs-{b['slug']}/",
     )
@@ -1200,6 +1200,19 @@ def render_new(items: list[dict]) -> str:
     return page
 
 
+TAG_UPPER = {"ai", "ui", "ux", "mcp", "seo", "pdf", "sql", "api", "cli", "llm", "aws", "gcp", "css", "html", "json", "yaml", "rag", "qa", "tdd", "e2e", "n8n"}
+
+
+def tag_label(tag: str) -> str:
+    return " ".join(w.upper() if w in TAG_UPPER else w.capitalize() for w in tag.replace("-", " ").replace("_", " ").split())
+
+
+def tag_title(tag: str, n: int) -> str:
+    if "claude" in tag or "skill" in tag or "agent" in tag:
+        return f'Claude Code Skills Tagged "{tag}" ({n})'
+    return f"{tag_label(tag)} Claude Code Skills ({n})"
+
+
 def main() -> int:
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -1243,8 +1256,8 @@ def main() -> int:
         if len(items) < 1:
             continue
         page = render_listing(
-            title=f'Claude Code skills tagged "{tag}"',
-            description=f"All Claude Code skills tagged with {tag} — {len(items)} match{'es' if len(items) > 1 else ''}.",
+            title=tag_title(tag, len(items)),
+            description=f"{len(items)} open-source Claude Code skill{'s' if len(items) > 1 else ''} tagged {tag}, ranked by GitHub stars, each with a one-line install command.",
             skills=items,
             canonical=f"/tag/{tag}/",
         )
