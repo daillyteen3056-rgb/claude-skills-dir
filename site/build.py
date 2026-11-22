@@ -375,8 +375,8 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 </div>
 </div>"""
     return layout(
-        title=f"{s['name']} — Claude Code Skill: Install & Usage",
-        description=f"{s.get('short_description', '').rstrip('.')}. Install command, FAQ and alternatives. {fmt_stars(s.get('stars'))} stars on GitHub.",
+        title=skill_title(s),
+        description=f"{s.get('short_description', '').rstrip('.')}. By {s.get('author') or 'its author'} on GitHub, {fmt_stars(s.get('stars'))} stars. Install command, FAQ and alternatives.",
         body=body,
         canonical=f"/skills/{s['slug']}/",
         extra_head=jsonld,
@@ -1258,6 +1258,15 @@ def tag_link(tag: str, all_skills: list[dict]) -> str:
     if _TAG_COUNTS[tag] >= MIN_TAG_INDEX:
         return f'<a href="/tag/{esc(tag)}/">{esc(tag)}</a>'
     return f'<span style="opacity:.6">{esc(tag)}</span>'
+
+
+def skill_title(s: dict) -> str:
+    """Name plus author, so searches like '<author> <skill>' or '<skill> github' match the title."""
+    name = s.get("name") or s.get("slug") or ""
+    author = s.get("author") or ""
+    if author and author.lower() not in name.lower():
+        name = f"{name} ({author})"
+    return f"{name} — Claude Code Skill: Install & Usage"
 
 
 def tidy_skill(s: dict) -> None:
