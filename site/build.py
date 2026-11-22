@@ -51,7 +51,7 @@ def gumroad_url(placement: str) -> str:
     sep = "&" if "?" in GUMROAD_URL else "?"
     return f"{GUMROAD_URL}{sep}utm_source=skillnest&utm_medium=directory&utm_campaign={placement}"
 SITE_DESC = (
-    "Discover 100+ open-source skills, plugins, and agents for Claude Code. "
+    "Discover hundreds of open-source skills, plugins, and agents for Claude Code. "
     "Browse by category — document processing, charts, research, automation, security. "
     "Install any skill in one command."
 )
@@ -737,7 +737,7 @@ SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Se
     var terms=v.split(/\\s+/);
     var hits=data.filter(function(s){var t=[s.name,s.slug,s.short_description,(s.tags||[]).join(' '),s.category].join(' ').toLowerCase();return terms.every(function(w){return t.indexOf(w)>-1;});});
     hits.sort(function(a,b){return (b.stars||0)-(a.stars||0);});
-    out.innerHTML=hits.length?hits.slice(0,24).map(card).join(''):'<p style="color:var(--muted)">No skills match \\u201c'+esc(v)+'\\u201d.</p>';
+    out.innerHTML=hits.length?(hits.length>24?'<p style="color:var(--muted)">Showing the top 24 of '+hits.length+' matches. Add another word to narrow it down.</p>':'')+hits.slice(0,24).map(card).join(''):'<p style="color:var(--muted)">No skills match \\u201c'+esc(v)+'\\u201d. Try a broader word, browse the <a href="/best/">best skills by topic</a>, or <a href="/submit/">suggest a skill</a>.</p>';
   }
   function load(cb){if(data)return cb();fetch('/data/skills.json').then(function(r){return r.json();}).then(function(d){data=d;cb();});}
   q.addEventListener('input',function(){load(run);});
