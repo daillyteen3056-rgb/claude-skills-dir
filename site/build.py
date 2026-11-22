@@ -185,6 +185,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <div>© {year} {SITE_NAME} · Community directory, not affiliated with Anthropic</div>
 <div><a href="/sitemap.xml">Sitemap</a> · <a href="/rss.xml">RSS</a></div>
 </div></footer>
+{COPY_JS}
 </body>
 </html>
 """
@@ -201,6 +202,7 @@ def skill_card(s: dict) -> str:
   <span>by {esc(s['author'])}</span>
   {featured}
 </div>
+<button type="button" data-cmd="{esc(install_cmd(s))}" style="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button>
 </article>"""
 
 
@@ -262,13 +264,14 @@ def render_home(skills: list[dict]) -> str:
 <div><b>{len(categories)}</b>categories</div>
 <div><b>{len(tags)}</b>tags</div>
 </div>
-{promo_block_full()}
 </section>
 
 <section>
 <h2>Featured</h2>
 <div class="grid">{featured_html}</div>
 </section>
+
+{promo_block_full()}
 
 {new_home(skills)}
 
@@ -732,7 +735,7 @@ SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Se
   var q=document.getElementById('q'),out=document.getElementById('results'),data=null;
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function fmtStars(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}
-  function card(s){return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+fmtStars(s.stars)+' \\u2605</span><span>by '+esc(s.author)+'</span></div></article>';}
+  function card(s){return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+fmtStars(s.stars)+' \\u2605</span><span>by '+esc(s.author)+'</span></div><button type="button" data-cmd="'+esc(s.install||'')+'" style="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button></article>';}
   function run(){
     var v=q.value.trim().toLowerCase();
     if(!v){out.innerHTML='';return;}
@@ -1226,6 +1229,9 @@ _CJK_RX = _re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
 GENERIC_NAMES = {"skills", "skill", "agent skills", "claude skills", "claude code skills", "ai skills", "my skills"}
 
 
+COPY_JS = """<script>document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-cmd]');if(!b)return;var c=b.getAttribute('data-cmd'),t=b.textContent;function done(){b.textContent='Copied \u2713';setTimeout(function(){b.textContent=t;},1500);}if(navigator.clipboard){navigator.clipboard.writeText(c).then(done,function(){window.prompt('Copy this command:',c);});}else{window.prompt('Copy this command:',c);}});</script>"""
+
+
 def tidy_skill(s: dict) -> None:
     """Keep the repo's own casing for short names (ECC, ELI5) and give non-English descriptions an English line."""
     seg = (s.get("repo_url") or "").rstrip("/").split("/")[-1]
@@ -1336,6 +1342,8 @@ def main() -> int:
     urls.append("/submit/")
 
     # Data endpoint
+    for s in skills:
+        s["install"] = install_cmd(s)
     write_file("data/skills.json", json.dumps(skills, ensure_ascii=False, indent=2))
 
     # Sitemap, robots, RSS
