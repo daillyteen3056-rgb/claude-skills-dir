@@ -552,7 +552,8 @@ LEAKED = {"claude-code", "free-claude-code", "system-prompts-leaks"}
 # Curated lists, tutorials and templates: useful repos, but not installable skills.
 NON_SKILL_RX = _re.compile(
     r"github\.com/[^/]+/awesome[-_]|github\.com/f/prompts\.chat|github\.com/shareAI-lab/learn-claude-code"
-    r"|github\.com/anthropics/skills/tree/main/(spec|template)/?$",
+    r"|github\.com/anthropics/skills/tree/main/(spec|template)/?$"
+    r"|github\.com/[^/]+/https?-github",  # copies named after another repo URL
     _re.I,
 )
 SEED_URLS = {s: f"https://github.com/anthropics/skills/tree/main/skills/{s}"
@@ -763,7 +764,7 @@ BEST_TOPICS = [
     ("python", "Python", r"python|pytest|django|fastapi"),
     ("react", "React & Next.js", r"\breact\b|nextjs|next\.js"),
     ("testing", "Testing", r"\btests?\b|testing|playwright|e2e|\bqa\b"),
-    ("git", "Git & GitHub", r"\bgit\b|github|commit|pull request"),
+    ("git", "Git & GitHub", r"\bgit\b|\bgit-|commit message|pull request|code review|changelog"),
     ("docker", "Docker & DevOps", r"docker|kubernetes|devops|ci/cd|deploy"),
     ("security", "Security", r"security|pentest|vulnerab|audit"),
     ("data", "Data Analysis", r"\bdata\b|analytics|\bsql\b|dashboard|chart"),
@@ -781,20 +782,34 @@ def skill_text(s: dict) -> str:
                      " ".join(s.get("tags") or [])]).lower()
 
 
+def _topic_tier(rx, s: dict) -> int:
+    """2 = topic in the name, 1 = in the short description, 0 = only in tags, -1 = no match."""
+    if rx.search(f"{s.get('name') or ''} {s.get('slug') or ''}".lower()):
+        return 2
+    if rx.search((s.get("short_description") or "").lower()):
+        return 1
+    if rx.search(" ".join(s.get("tags") or []).lower()):
+        return 0
+    return -1
+
+
 def best_pages(skills: list[dict], min_items: int = 5, top: int = 20) -> list[tuple[str, str, list[dict]]]:
     out = []
     for slug, label, pattern in BEST_TOPICS:
         rx = _re.compile(pattern)
-        items = [s for s in skills if rx.search(skill_text(s))]
-        if len(items) >= min_items:
-            out.append((slug, label, by_stars(items)[:top]))
+        scored = [(_topic_tier(rx, s), s) for s in skills]
+        strong = [(tier, s) for tier, s in scored if tier >= 1]
+        pool = strong if len(strong) >= min_items else [(tier, s) for tier, s in scored if tier >= 0]
+        if len(pool) >= min_items:
+            pool.sort(key=lambda ts: (-ts[0], -(ts[1].get("stars") or 0)))
+            out.append((slug, label, [s for _, s in pool][:top]))
     return out
 
 
 def render_best(slug: str, label: str, items: list[dict]) -> str:
     year = datetime.now().year
     title = f"Best {label} Claude Code Skills ({year})"
-    desc = (f"The top {len(items)} open-source Claude Code skills for {label}, ranked by GitHub stars, "
+    desc = (f"The top {len(items)} open-source Claude Code skills for {label}, ranked by relevance, then GitHub stars, "
             f"with what each one does and a one-line install command.")
     rows = []
     for i, s in enumerate(items, 1):
@@ -816,7 +831,7 @@ def render_best(slug: str, label: str, items: list[dict]) -> str:
 {seo_promo_full('best-' + slug) if slug in SEO_PROMO_TOPICS else ''}
 <section class="detail" style="display:block;padding-top:0">
 <ol style="list-style:none;padding:0">{''.join(rows)}</ol>
-<p style="color:var(--muted);font-size:14px">Ranking is by GitHub stars at the last update. Always review a skill's code before installing it.</p>
+<p style="color:var(--muted);font-size:14px">Skills that name the topic come first, then skills that describe it; ties are ranked by GitHub stars at the last update. Always review a skill's code before installing it.</p>
 </section>
 <section><h2>More guides</h2><div class="tag-cloud">{others}</div></section>
 </div>"""
