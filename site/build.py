@@ -197,7 +197,7 @@ def skill_card(s: dict) -> str:
 <p>{esc(s.get('short_description', ''))}</p>
 <div class="meta">
   <span class="chip">{esc(s.get('category', 'other'))}</span>
-  <span>{s.get('stars', 0)}★</span>
+  <span>{fmt_stars(s.get('stars'))} ★</span>
   <span>by {esc(s['author'])}</span>
   {featured}
 </div>
@@ -364,7 +364,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 <div class="row"><span>Category</span><span>{esc(s.get('category', 'other'))}</span></div>
 <div class="row"><span>Difficulty</span><span>{esc(s.get('difficulty', 'beginner'))}</span></div>
 <div class="row"><span>Price</span><span>{esc(s.get('price', 'free'))}</span></div>
-<div class="row"><span>Stars</span><span>{s.get('stars', 0)}</span></div>
+<div class="row"><span>Stars</span><span>{format(s.get('stars') or 0, ',')}</span></div>
 <div class="row"><span>Updated</span><span>{esc(s.get('updated_at', ''))}</span></div>
 <a class="cta" href="{esc(s.get('repo_url', '#'))}" rel="noopener">View on GitHub →</a>
 {sidebar_promo(s)}
@@ -373,7 +373,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 </div>"""
     return layout(
         title=f"{s['name']} — Claude Code Skill: Install & Usage",
-        description=f"{s.get('short_description', '').rstrip('.')}. Install command, FAQ and alternatives. {s.get('stars', 0)}★ on GitHub.",
+        description=f"{s.get('short_description', '').rstrip('.')}. Install command, FAQ and alternatives. {fmt_stars(s.get('stars'))} stars on GitHub.",
         body=body,
         canonical=f"/skills/{s['slug']}/",
         extra_head=jsonld,
@@ -426,7 +426,7 @@ def render_compare(a: dict, b: dict) -> str:
 {row("Author", a["author"], b["author"])}
 {row("Price", a.get("price"), b.get("price"))}
 {row("Difficulty", a.get("difficulty"), b.get("difficulty"))}
-{row("Stars", a.get("stars", 0), b.get("stars", 0))}
+{row("Stars", format(a.get("stars") or 0, ","), format(b.get("stars") or 0, ","))}
 {row("Short description", a.get("short_description", ""), b.get("short_description", ""))}
 </tbody></table>
 </section>
@@ -605,6 +605,7 @@ def clean_skills(raw: list[dict]) -> list[dict]:
             s["repo_url"] = s["author_url"] = SEED_URLS[slug]
         elif not SKILL_RX.search(text):
             continue  # not a Claude skill (generic awesome-lists etc.)
+        tidy_skill(s)
         if slug in CATEGORY_OVERRIDES:
             s["category"] = CATEGORY_OVERRIDES[slug]
         elif s.get("category", "other") == "other":
@@ -653,7 +654,7 @@ def faq_block(s: dict, cmd: str) -> tuple[str, str]:
         (f"How do I install {name} in Claude Code?",
          f"Clone it into your personal skills folder: {cmd.replace(chr(10), ' && ')} — Claude Code picks it up automatically."),
         (f"Is {name} free?",
-         f"{name} is open source on GitHub ({stars} stars at last check) and published by {author}."),
+         f"{name} is open source on GitHub ({stars:,} stars at last check) and published by {author}."),
         (f"What are alternatives to {name}?",
          f"Browse other {cat.replace('-', ' ')} skills in the {cat.replace('-', ' ').title()} category of this directory."),
     ]
@@ -730,7 +731,8 @@ SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Se
 (function(){
   var q=document.getElementById('q'),out=document.getElementById('results'),data=null;
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-  function card(s){return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+(s.stars||0)+'\\u2605</span><span>by '+esc(s.author)+'</span></div></article>';}
+  function fmtStars(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}
+  function card(s){return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+fmtStars(s.stars)+' \\u2605</span><span>by '+esc(s.author)+'</span></div></article>';}
   function run(){
     var v=q.value.trim().toLowerCase();
     if(!v){out.innerHTML='';return;}
@@ -797,7 +799,7 @@ def render_best(slug: str, label: str, items: list[dict]) -> str:
             f'<li style="margin:0 0 22px"><h3 style="font-size:19px;color:#fff;margin-bottom:4px">{i}. '
             f'<a href="/skills/{esc(s["slug"])}/">{esc(s["name"])}</a></h3>'
             f'<p style="color:var(--muted);margin-bottom:6px">{esc(s.get("short_description", ""))}</p>'
-            f'<p style="font-size:13px;color:var(--muted)">{s.get("stars", 0)}★ · by {esc(s.get("author", ""))} · '
+            f'<p style="font-size:13px;color:var(--muted)">{fmt_stars(s.get("stars"))} ★ · by {esc(s.get("author", ""))} · '
             f'<a href="/category/{esc(s.get("category", "other"))}/">{esc(s.get("category", "other"))}</a></p>'
             f'<pre style="margin-top:8px"><code>{esc(install_cmd(s))}</code></pre></li>')
     others = " ".join(f'<a href="/best/{b}/">{esc(lb)}</a>' for b, lb, _ in best_pages_cache if b != slug)
@@ -1211,6 +1213,30 @@ def tag_title(tag: str, n: int) -> str:
     if "claude" in tag or "skill" in tag or "agent" in tag:
         return f'Claude Code Skills Tagged "{tag}" ({n})'
     return f"{tag_label(tag)} Claude Code Skills ({n})"
+
+
+def fmt_stars(n) -> str:
+    n = int(n or 0)
+    if n < 1000:
+        return str(n)
+    return f"{n / 1000:.1f}".rstrip("0").rstrip(".") + "k"
+
+
+_CJK_RX = _re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
+
+
+def tidy_skill(s: dict) -> None:
+    """Keep the repo's own casing for short names (ECC, ELI5) and give non-English descriptions an English line."""
+    seg = (s.get("repo_url") or "").rstrip("/").split("/")[-1]
+    if seg and len(seg) <= 5 and seg.lower() == (s.get("name") or "").replace(" ", "-").lower():
+        s["name"] = seg
+    desc = s.get("short_description") or ""
+    if _CJK_RX.search(desc):
+        lang = ("Korean" if _re.search(r"[\uac00-\ud7af]", desc)
+                else "Japanese" if _re.search(r"[\u3040-\u30ff]", desc) else "Chinese")
+        s["short_description_orig"] = desc
+        s["short_description"] = (f"{s.get('name') or s.get('slug')}: a Claude Code skill by {s.get('author') or 'its author'}. "
+                                  f"The original description is in {lang}; see the GitHub README for details.")
 
 
 def main() -> int:
