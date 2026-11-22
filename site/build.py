@@ -1223,11 +1223,14 @@ def fmt_stars(n) -> str:
 
 
 _CJK_RX = _re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
+GENERIC_NAMES = {"skills", "skill", "agent skills", "claude skills", "claude code skills", "ai skills", "my skills"}
 
 
 def tidy_skill(s: dict) -> None:
     """Keep the repo's own casing for short names (ECC, ELI5) and give non-English descriptions an English line."""
     seg = (s.get("repo_url") or "").rstrip("/").split("/")[-1]
+    if (s.get("name") or "").lower() in GENERIC_NAMES and s.get("author"):
+        s["name"] = f"{s['author']}/{seg}"
     if seg and len(seg) <= 5 and seg.lower() == (s.get("name") or "").replace(" ", "-").lower():
         s["name"] = seg
     desc = s.get("short_description") or ""
