@@ -255,13 +255,13 @@ def render_home(skills: list[dict]) -> str:
     body = f"""<div class="wrap">
 <section class="hero">
 <h1>Every Claude Code skill,<br><span>one search away.</span></h1>
+{SEARCH_HTML}
 <p>{esc(SITE_DESC)}</p>
 <div class="stats">
 <div><b>{len(skills)}</b>skills indexed</div>
 <div><b>{len(categories)}</b>categories</div>
 <div><b>{len(tags)}</b>tags</div>
 </div>
-{SEARCH_HTML}
 {promo_block_full()}
 </section>
 
