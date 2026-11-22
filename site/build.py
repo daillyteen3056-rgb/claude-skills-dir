@@ -388,7 +388,17 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
 <div class="grid">{cards}</div>
 </section>
 </div>"""
-    return layout(title=f"{title} — {SITE_NAME}", description=description, body=body, canonical=canonical)
+    ranked = sorted(skills, key=lambda x: -(x.get("stars") or 0))[:50]
+    item_list = {
+        "@context": "https://schema.org", "@type": "ItemList", "name": title,
+        "numberOfItems": len(skills),
+        "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "url": f"{SITE_URL}/skills/{x['slug']}/", "name": x.get("name") or x["slug"]}
+            for i, x in enumerate(ranked)
+        ],
+    }
+    extra = '<script type="application/ld+json">' + json.dumps(item_list, ensure_ascii=False).replace("</", "<\\/") + "</script>"
+    return layout(title=f"{title} — {SITE_NAME}", description=description, body=body, canonical=canonical, extra_head=extra)
 
 
 def render_compare(a: dict, b: dict) -> str:
@@ -533,6 +543,12 @@ import re as _re
 FAKE_SEEDS = {"claude-api", "code-review", "dataviz", "deep-research", "docs",
               "google-workspace", "loop", "plugin-authoring", "schedule"}
 LEAKED = {"claude-code", "free-claude-code", "system-prompts-leaks"}
+# Curated lists, tutorials and templates: useful repos, but not installable skills.
+NON_SKILL_RX = _re.compile(
+    r"github\.com/[^/]+/awesome[-_]|github\.com/f/prompts\.chat|github\.com/shareAI-lab/learn-claude-code"
+    r"|github\.com/anthropics/skills/tree/main/(spec|template)/?$",
+    _re.I,
+)
 SEED_URLS = {s: f"https://github.com/anthropics/skills/tree/main/skills/{s}"
              for s in ("docx", "pdf", "pptx", "xlsx", "skill-creator")}
 SEED_URLS["security-review"] = "https://github.com/anthropics/claude-code-security-review"
@@ -578,6 +594,8 @@ def clean_skills(raw: list[dict]) -> list[dict]:
         slug = s.get("slug", "")
         if slug in FAKE_SEEDS or slug in LEAKED:
             continue
+        if NON_SKILL_RX.search(s.get("repo_url") or ""):
+            continue  # curated list / tutorial / template, not a skill
         text = " ".join([s.get("name") or "", slug, s.get("short_description") or "",
                          " ".join(s.get("tags") or [])]).lower()
         if slug in SEED_URLS:
