@@ -351,7 +351,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 
 <div class="section-h">Tags</div>
 <div class="tag-cloud">
-{''.join(f'<a href="/tag/{esc(t)}/">{esc(t)}</a>' for t in (s.get('tags') or []))}
+{''.join(tag_link(t, all_skills) for t in (s.get('tags') or []))}
 </div>
 
 {faq}
@@ -1246,6 +1246,18 @@ GENERIC_NAMES = {"skills", "skill", "agent skills", "claude skills", "claude cod
 
 
 COPY_JS = """<script>document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-cmd]');if(!b)return;var c=b.getAttribute('data-cmd'),t=b.textContent;function done(){b.textContent='Copied \u2713';setTimeout(function(){b.textContent=t;},1500);}if(navigator.clipboard){navigator.clipboard.writeText(c).then(done,function(){window.prompt('Copy this command:',c);});}else{window.prompt('Copy this command:',c);}});</script>"""
+
+
+_TAG_COUNTS: Counter = Counter()
+
+
+def tag_link(tag: str, all_skills: list[dict]) -> str:
+    """Link a tag only if its page is indexable; thin tags stay plain text so crawlers skip noindex pages."""
+    if not _TAG_COUNTS:
+        _TAG_COUNTS.update(x for s in all_skills for x in (s.get("tags") or []))
+    if _TAG_COUNTS[tag] >= MIN_TAG_INDEX:
+        return f'<a href="/tag/{esc(tag)}/">{esc(tag)}</a>'
+    return f'<span style="opacity:.6">{esc(tag)}</span>'
 
 
 def tidy_skill(s: dict) -> None:
