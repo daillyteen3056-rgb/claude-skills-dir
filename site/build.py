@@ -1286,7 +1286,7 @@ def best_guide_html(slug: str, label: str, items: list[dict]) -> str:
             f'<pre><code>{esc(cmd)}</code></pre>'
             f'<button type="button" data-cmd="{esc(cmd)}" style="font-size:12px;padding:4px 10px;border-radius:6px;'
             f'border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button>'
-            f'<p style="margin-top:14px">Claude Code picks new skills up automatically. Then just ask, for example:</p>'
+            f'<p style="margin-top:14px">Claude Code picks new skills up automatically. Pick the skill from the list below that matches your task, then describe the task in plain words. Typical requests in this area:</p>'
             f'<ul>{asks}</ul>'
             f'<p style="color:var(--muted);font-size:14px">On Windows? See the '
             f'<a href="/blog/install-claude-code-skills-windows/">Windows install guide</a>.</p>'
