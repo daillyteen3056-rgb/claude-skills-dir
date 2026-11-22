@@ -288,6 +288,9 @@ def repo_to_skill(repo: dict) -> dict | None:
     }
 
 
+ADDED_BASELINE = "2026-11-22"  # skills indexed before this date count as launch stock
+
+
 def main() -> int:
     seed = json.loads(SEED.read_text(encoding="utf-8"))
     by_slug: dict[str, dict] = {s["slug"]: s for s in seed}
@@ -337,6 +340,18 @@ def main() -> int:
         by_slug.values(),
         key=lambda s: (not s.get("featured"), -s.get("stars", 0), s["slug"]),
     )
+    # Remember when each skill first entered the index (drives the /new/ page)
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    prev_added: dict[str, str] = {}
+    if OUT.exists():
+        try:
+            for p in json.loads(OUT.read_text(encoding="utf-8")):
+                prev_added[p["slug"]] = p.get("added_at") or ADDED_BASELINE
+        except (ValueError, KeyError, TypeError):
+            prev_added = {}
+    for s in all_skills:
+        s["added_at"] = prev_added.get(s["slug"]) or (today if prev_added else ADDED_BASELINE)
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(all_skills, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"[done] {len(all_skills)} skills → {OUT}")
