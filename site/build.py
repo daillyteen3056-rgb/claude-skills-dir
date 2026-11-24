@@ -243,7 +243,8 @@ def promo_block_compact() -> str:
 
 def render_home(skills: list[dict]) -> str:
     featured = [s for s in skills if s.get("featured")][:6]
-    all_skills = sorted(skills, key=lambda x: -(x.get("stars") or 0))[:30]
+    featured_slugs = {s["slug"] for s in featured}
+    all_skills = [s for s in sorted(skills, key=lambda x: -(x.get("stars") or 0)) if s["slug"] not in featured_slugs][:30]
     categories = sorted({s.get("category", "other") for s in skills})
     tags = sorted({t for s in skills for t in (s.get("tags") or [])})
 
@@ -286,13 +287,13 @@ def render_home(skills: list[dict]) -> str:
 <div class="tag-cloud">{guides_cloud(skills)}</div>
 </section>
 
-<section>
+<section id="categories">
 <h2>Categories</h2>
 <div class="tag-cloud">{cats_html}</div>
 </section>
 
 <section>
-<h2>Top 30 skills <span style="font-size:15px;color:var(--muted);font-weight:400">of {len(skills)} — browse the categories above for the rest</span></h2>
+<h2>More popular skills <span style="font-size:15px;color:var(--muted);font-weight:400">30 more of {len(skills)} · <a href="#categories">browse all by category</a></span></h2>
 <div class="grid">{all_html}</div>
 </section>
 
@@ -580,6 +581,12 @@ CATEGORY_OVERRIDES = {slug: cat for cat, slugs in {
     "automation": ["job-application-agent"],
     "lifestyle": ["qingsheng-skill"],
 }.items() for slug in slugs}
+# Hand-checked fixes for high-star skills the automatic guess got wrong
+CATEGORY_OVERRIDES.update({
+    "ecc": "meta", "hermes-agent": "meta", "agency-agents": "meta", "gstack": "meta", "paperclip": "meta",
+    "firecrawl": "automation", "scrapling": "automation", "agent-reach": "automation",
+    "graphify": "development", "impeccable": "design", "hyperframes": "content-creation", "ruview": "other",
+})
 CATEGORY_RULES = [(c, _re.compile(p)) for c, p in [
     ("game-dev", r"godot|\bgame|unity|bevy|unreal"),
     ("security", r"security|pentest|vulnerab|audit|\bctf\b"),
@@ -1244,6 +1251,7 @@ def fmt_stars(n) -> str:
 
 
 _CJK_RX = _re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
+TAG_SYNONYMS = {"claude-skill": "claude-skills", "claude-code-skill": "claude-code-skills", "agent-skill": "agent-skills", "skill": "skills", "claudecode": "claude-code"}
 GENERIC_NAMES = {"skills", "skill", "agent skills", "claude skills", "claude code skills", "ai skills", "my skills"}
 
 
@@ -1278,7 +1286,12 @@ def tidy_skill(s: dict) -> None:
         s["name"] = f"{s['author']}/{seg}"
     if seg and len(seg) <= 5 and seg.lower() == (s.get("name") or "").replace(" ", "-").lower():
         s["name"] = seg
+    s["tags"] = list(dict.fromkeys(TAG_SYNONYMS.get(t, t) for t in (s.get("tags") or [])))
     desc = s.get("short_description") or ""
+    clean = _re.sub(r"\s*(?:\b[A-Za-z]{1,12}:\s+)?\(?https?://\S+\)?", "", desc).strip(" -–—:|·")
+    if clean != desc:
+        s["short_description"] = clean or f"{s.get('name') or s.get('slug')}: a Claude Code skill by {s.get('author') or 'its author'}."
+        desc = s["short_description"]
     if _CJK_RX.search(desc):
         lang = ("Korean" if _re.search(r"[\uac00-\ud7af]", desc)
                 else "Japanese" if _re.search(r"[\u3040-\u30ff]", desc) else "Chinese")
@@ -1349,7 +1362,7 @@ def main() -> int:
         write_file(
             f"category/{cat}/index.html",
             render_listing(
-                title=f"Best {cat.replace('-', ' ').title()} Claude Code Skills ({len(items)})",
+                title=f"{cat.replace('-', ' ').title()} Claude Code Skills: All {len(items)}, Ranked by Stars",
                 description=category_desc(cat, items),
                 skills=items,
                 canonical=f"/category/{cat}/",
