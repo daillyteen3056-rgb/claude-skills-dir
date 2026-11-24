@@ -60,7 +60,7 @@ def obj(alias: str, expr: str, frag: str) -> str:
 
 def repo_block(alias: str, owner: str, name: str, parts: list[str]) -> str:
     return (f"{alias}: repository(owner: {json.dumps(owner)}, name: {json.dumps(name)}) {{ "
-            f"licenseInfo {{ spdxId name }} pushedAt isArchived " + " ".join(parts) + " }")
+            f"licenseInfo {{ spdxId name }} pushedAt isArchived stargazerCount " + " ".join(parts) + " }")
 
 
 def first_pass_parts(sub: str) -> list[str]:
@@ -155,6 +155,7 @@ def main() -> int:
                 "license": ((r.get("licenseInfo") or {}).get("spdxId") or "").replace("NOASSERTION", "Other"),
                 "pushed_at": (r.get("pushedAt") or "")[:10],
                 "archived": bool(r.get("isArchived")),
+                "repo_stars": int(r.get("stargazerCount") or 0),
                 "has_marketplace": any(e["name"] == ".claude-plugin" and e["type"] == "tree" for e in root),
                 "skill_path": sub,
             }
