@@ -1060,7 +1060,7 @@
     "5. When the user pastes a reply from a page"
    ],
    "excerpt": "# Answer me with HTML: answer a complex question with one HTML page\n\nYou write only the **content draft** (extended Markdown). The `am` CLI does all layout, colours, dark mode and diagram coordinates. **Do not hand-write HTML / CSS / SVG.**\n\nReply to the user, and write the draft, in the user's language.\n\n## 0. When the user wants to change settings\n\nArguments for this call: `$ARGUMENTS`\n\nWhen the arguments start with `config`, `clean` or `update`, or the user asks to change a setting, clean up pages or update this skill: read `${CLAUDE_SKILL_DIR}/references/settings.md` and follow it. That turn produces no page.\n\n## 1. Decide: produce a page or not\n\nProduce a page if any of these is true:\n- There are ≥3 interrelated concepts, and the reader needs to see how they relate.\n- There is a flow, protocol, call chain or state transition (especially with branches or several actors).\n…",
-   "lines": 205
+   "lines": 206
   },
   "skill_md_path": "skills/answer-me-with-html",
   "has_scripts": true
@@ -5036,7 +5036,7 @@
  },
  "context-mode": {
   "license": "Other",
-  "pushed_at": "2026-11-23",
+  "pushed_at": "2026-11-24",
   "archived": false,
   "has_marketplace": true,
   "skill_path": "",
@@ -5671,7 +5671,32 @@
   "pushed_at": "2026-11-16",
   "archived": false,
   "has_marketplace": true,
-  "skill_path": "docx"
+  "skill_path": "docx",
+  "skill_md": {
+   "name": "docx",
+   "description": "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files) or Word templates (.dotx files). Triggers include: any mention of 'Word doc', 'word document', '.docx', '.dotx', or requests to produce professional documents with formatting like tables of contents, headings, page numbers, or letterheads. Also use when extracting or reorganizing content from .docx or .dotx files, inserting or replacing images in documents, performing find-and-replace in Word files, working with tracked changes or comments, or converting content into a polished Word document. If the user asks for a 'report', 'memo', 'letter', 'template', or similar deliverable as a Word or .docx file, use this skill. Do NOT use for PDFs, spreadsheets, Google Docs, or general coding tasks unrelated to document generation.",
+   "keys": [
+    "description",
+    "license",
+    "name"
+   ],
+   "outline": [
+    "DOCX creation, editing, and analysis",
+    "Creating with docx-js — gotchas",
+    "Verify the output",
+    "Editing existing documents",
+    "edit unpacked/word/document.xml in place — do NOT reformat or pretty-print",
+    "redlining? add --author \"<the name you redlined under>\" to check every edit is tracked",
+    "Comments",
+    "Against an already-unpacked directory (preferred when also placing markers)",
+    "Against a .docx directly",
+    "Dependencies"
+   ],
+   "excerpt": "# DOCX creation, editing, and analysis\n\nA `.docx` is a ZIP archive of XML files. Choose your approach by task:\n\n| Task | Approach |\n|---|---|\n| **Create** a new document | Write a `docx` (npm) script — see gotchas below |\n| **Edit** an existing document | unpack → edit `word/document.xml` → `zip` (docx-js cannot open existing files) |\n| **Read** content | `pandoc -t markdown file.docx` |\n\n> Script paths below are relative to this skill's directory.\n\n## Creating with docx-js — gotchas\n\n`docx` is preinstalled — do not run `npm install` first; write the script and `require('docx')` directly. Only if that require fails: `npm install docx`. The model knows the API; these are the footguns:\n\n- **Page size defaults to A4.** For US Letter set `page: { size: { width: 12240, height: 15840 } }` (DXA; 1440 = 1″).\n…",
+   "lines": 88
+  },
+  "skill_md_path": "skills/docx",
+  "has_scripts": true
  },
  "docx-cli": {
   "license": "MIT",
@@ -10401,7 +10426,34 @@
   "pushed_at": "2026-11-16",
   "archived": false,
   "has_marketplace": true,
-  "skill_path": "pdf"
+  "skill_path": "pdf",
+  "skill_md": {
+   "name": "pdf",
+   "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.",
+   "keys": [
+    "description",
+    "license",
+    "name"
+   ],
+   "outline": [
+    "PDF Processing Guide",
+    "Overview",
+    "Quick Start",
+    "Read a PDF",
+    "Extract text",
+    "Python Libraries",
+    "pypdf - Basic Operations",
+    "pdfplumber - Text and Table Extraction",
+    "Combine all tables",
+    "reportlab - Create PDFs",
+    "Add text",
+    "Add a line"
+   ],
+   "excerpt": "# PDF Processing Guide\n\n## Overview\n\nThis guide covers essential PDF processing operations using Python libraries and command-line tools. For advanced features, JavaScript libraries, and detailed examples, see REFERENCE.md. If you need to fill out a PDF form, read FORMS.md and follow its instructions.\n\n## Quick Start\n\n```python\nfrom pypdf import PdfReader, PdfWriter\n\n# Read a PDF\nreader = PdfReader(\"document.pdf\")\nprint(f\"Pages: {len(reader.pages)}\")\n\n# Extract text\ntext = \"\"\nfor page in reader.pages:\n    text += page.extract_text()\n```\n\n## Python Libraries\n\n### pypdf - Basic Operations\n\n#### Merge PDFs\n```python\nfrom pypdf import PdfWriter, PdfReader\n\nwriter = PdfWriter()\nfor pdf_file in [\"doc1.pdf\", \"doc2.pdf\", \"doc3.pdf\"]:\n    reader = PdfReader(pdf_file)\n    for page in reader.pages:\n        writer.add_page(page)\n\nwith open(\"merged.pdf\", \"wb\") as output:\n    writer.write(output)\n```\n…",
+   "lines": 310
+  },
+  "skill_md_path": "skills/pdf",
+  "has_scripts": true
  },
  "pdf-it": {
   "license": "MIT",
@@ -10875,7 +10927,34 @@
   "pushed_at": "2026-11-16",
   "archived": false,
   "has_marketplace": true,
-  "skill_path": "pptx"
+  "skill_path": "pptx",
+  "skill_md": {
+   "name": "pptx",
+   "description": "Use this skill any time a .pptx or .potx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx or .potx file (even if the extracted content will be used elsewhere, like in an email or summary); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates (.potx), layouts, speaker notes, or comments. Trigger whenever the user mentions \\\"deck,\\\" \\\"slides,\\\" \\\"presentation,\\\" or references a .pptx or .potx filename, regardless of what they plan to do with the content afterward. If a .pptx or .potx file needs to be opened, created, or touched, use this skill.",
+   "keys": [
+    "description",
+    "license",
+    "name"
+   ],
+   "outline": [
+    "PPTX creation, editing, and analysis",
+    "Scripts",
+    "Creating with pptxgenjs — gotchas",
+    "Structured decks",
+    "Editing existing decks and templates",
+    "reorder / delete slides = edit <p:sldIdLst> in ppt/presentation.xml",
+    "edit slide content in ppt/slides/slideN.xml",
+    "Deck content and flow",
+    "Design Ideas",
+    "Before Starting",
+    "Color Palettes",
+    "For Each Slide"
+   ],
+   "excerpt": "# PPTX creation, editing, and analysis\n\nA `.pptx` is a ZIP archive of XML files. Choose your approach by task:\n\n| Task | Approach |\n|---|---|\n| **Create** a new deck | Write a `pptxgenjs` script — see gotchas below — and build it as a [structured deck](#structured-decks) unless the user asks for a quick throwaway |\n| **Edit** an existing deck, or build from a template | unpack → edit `ppt/slides/slideN.xml` → zip |\n| **Read** content | `python scripts/slide_text.py deck.pptx` (one block per slide under `` markers); visual grid: `python scripts/thumbnail.py deck.pptx` |\n\n## Scripts\n\nPaths are relative to this skill's directory. Everything else is plain Python, `node`, or shell.\n\n| Script | What it does |\n|---|---|\n…",
+   "lines": 267
+  },
+  "skill_md_path": "skills/pptx",
+  "has_scripts": true
  },
  "principle-deepdive-html-style": {
   "license": "MIT",
@@ -12096,7 +12175,33 @@
   "pushed_at": "2026-11-16",
   "archived": false,
   "has_marketplace": true,
-  "skill_path": "skill-creator"
+  "skill_path": "skill-creator",
+  "skill_md": {
+   "name": "skill-creator",
+   "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+   "keys": [
+    "description",
+    "name"
+   ],
+   "outline": [
+    "Skill Creator",
+    "Communicating with the user",
+    "Creating a skill",
+    "Capture Intent",
+    "Interview and Research",
+    "Write the SKILL.md",
+    "Skill Writing Guide",
+    "Report structure",
+    "[Title]",
+    "Executive summary",
+    "Key findings",
+    "Recommendations"
+   ],
+   "excerpt": "# Skill Creator\n\nA skill for creating new skills and iteratively improving them.\n\nAt a high level, the process of creating a skill goes like this:\n\n- Decide what you want the skill to do and roughly how it should do it\n- Write a draft of the skill\n- Create a few test prompts and run claude-with-access-to-the-skill on them\n- Help the user evaluate the results both qualitatively and quantitatively\n  - While the runs happen in the background, draft some quantitative evals if there aren't any (if there are some, you can either use as is or modify if you feel something needs to change about them). Then explain them to the user (or if they already existed, explain the ones that already exist)\n  - Use the `eval-viewer/generate_review.py` script to show the user the results for them to look at, and also let them look at the quantitative metrics\n…",
+   "lines": 482
+  },
+  "skill_md_path": "skills/skill-creator",
+  "has_scripts": true
  },
  "skill-forge": {
   "license": "MIT",
@@ -14088,6 +14193,28 @@
   "pushed_at": "2026-11-16",
   "archived": false,
   "has_marketplace": true,
-  "skill_path": "xlsx"
+  "skill_path": "xlsx",
+  "skill_md": {
+   "name": "xlsx",
+   "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .xltx, .csv, or .tsv file (e.g., adding columns, computing formulas, formatting, charting, cleaning messy data); create a new spreadsheet from scratch or from other data sources; or convert between tabular file formats. Trigger especially when the user references a spreadsheet file by name or path — even casually (like \\\"the xlsx in my downloads\\\") — and wants something done to it or produced from it. Also trigger for cleaning or restructuring messy tabular data files (malformed rows, misplaced headers, junk data) into proper spreadsheets. The deliverable must be a spreadsheet file. Do NOT trigger when the primary deliverable is a Word document, HTML report, standalone Python script, database pipeline, or Google Sheets API integration, even if tabular data is involved.",
+   "keys": [
+    "description",
+    "license",
+    "name"
+   ],
+   "outline": [
+    "XLSX creation, editing, and analysis",
+    "Requirements for every output",
+    "Recalculate (mandatory whenever the file contains formulas)",
+    "Choosing formulas that survive verification",
+    "openpyxl gotchas",
+    "Financial models",
+    "Dependencies"
+   ],
+   "excerpt": "# XLSX creation, editing, and analysis\n\n| Task | Approach |\n|---|---|\n| **Create** or **edit** with formulas/formatting | `openpyxl` — see gotchas below |\n| **Bulk data** in or out | `pandas` (`read_excel`, `to_excel`) |\n| **Quick look** at a sheet | `markitdown file.xlsx` — `## SheetName` per sheet; reads `.xlsm` too. No cell coordinates, so don't plan edits from it |\n| **Read** a model (formulas *and* values) | two `load_workbook` passes — see gotchas |\n\n> `openpyxl`, `pandas`, and `markitdown` are preinstalled — do not run `pip install` first; write the script and import directly. Only if an import fails (or the `markitdown` command is missing): `pip install` the missing package.\n\n> Script paths below are relative to this skill's directory.\n\n## Requirements for every output\n\n- **Professional font** (Arial, Times New Roman) throughout, unless the user says otherwise.\n…",
+   "lines": 100
+  },
+  "skill_md_path": "skills/xlsx",
+  "has_scripts": true
  }
 }
