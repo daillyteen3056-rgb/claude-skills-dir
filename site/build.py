@@ -1416,6 +1416,16 @@ def main() -> int:
     _meta = X.load_meta(PROJECT / "data" / "skill_meta.json")
     for s in skills:
         s["meta"] = _meta.get(s["slug"]) or {}
+        m = s["meta"]
+        if not s.get("stars") and m.get("repo_stars"):
+            s["stars"] = m["repo_stars"]
+        trig = ((m.get("skill_md") or {}).get("description") or "").strip()
+        weak = "a Claude Code skill by" in (s.get("short_description") or "") or "original description is in" in (s.get("short_description") or "")
+        if weak and trig and len(_re.findall(r"[A-Za-z]", trig)) > len(trig) * 0.6:
+            first = _re.split(r"(?<=[.!?])\s", trig)[0]
+            s["short_description"] = first if len(first) <= 220 else first[:217].rsplit(" ", 1)[0] + "…"
+        # thin page: no stars, no SKILL.md found, generic description -> keep page, drop from index
+        s["thin"] = (s.get("stars") or 0) < 3 and not m.get("skill_md") and (weak or len(s.get("long_description") or "") < 80)
     print(f"[gen] meta for {sum(1 for s in skills if s['meta'])} skills")
     print(f"[gen] {len(skills)} skills")
 
@@ -1426,8 +1436,12 @@ def main() -> int:
 
     # Skill detail
     for s in skills:
-        write_file(f"skills/{s['slug']}/index.html", render_skill(s, skills))
-        urls.append(f"/skills/{s['slug']}/")
+        page = render_skill(s, skills)
+        if s.get("thin"):
+            page = page.replace('content="index,follow,max-image-preview:large"', 'content="noindex,follow"')
+        write_file(f"skills/{s['slug']}/index.html", page)
+        if not s.get("thin"):
+            urls.append(f"/skills/{s['slug']}/")
 
     # Category pages
     cats: dict[str, list[dict]] = {}
