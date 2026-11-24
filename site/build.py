@@ -107,6 +107,7 @@ h2{font-size:28px;font-weight:700;color:#fff;margin-bottom:20px;letter-spacing:-
 .sidebar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;height:fit-content;position:sticky;top:80px}
 .sidebar .row{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid var(--border)}
 .sidebar .row:last-child{border-bottom:none}
+.detail>*,.grid>*{min-width:0}.detail pre{max-width:100%}blockquote,.long,.short{overflow-wrap:anywhere}
 .inst{margin:10px 0 18px}.inst-h{display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:14px;color:#fff}
 .sidebar .row span:first-child{color:var(--muted)}
 .sidebar .row span:last-child{color:#fff;font-weight:500}
@@ -1327,10 +1328,12 @@ def clean_readme(t: str) -> str:
     t = _re.sub(r"&[a-z]+;", " ", t)
     t = _re.sub(r"\s+", " ", t)
     t = _re.sub(r"(?:[^·.!?:]{1,25}?\s?·\s?)+\S+", " ", t)
+    t = _re.sub(r"(?:\s-\s[^.\-]{1,30}){3,}(?:\s-)?", " ", t)
     t = _re.sub(r"(?:\s-\s[A-Z][\w' ]{1,25}){2,}", " ", t)
     t = _re.sub(r"[-=]{3,}", " ", t)
     sents = [x for x in _re.split(r"(?<=[.!?。])\s+", t) if not _NAV_SENT_RX.match(x.strip())]
     t = _re.sub(r"\s+", " ", " ".join(sents)).strip()
+    t = _re.sub(r"\s+([.,;:!?])", r"\1", t).replace("..", ".")
     if len(t) > 600:
         cut = t[:600]
         k = max(cut.rfind(". "), cut.rfind("。"))
