@@ -107,6 +107,7 @@ h2{font-size:28px;font-weight:700;color:#fff;margin-bottom:20px;letter-spacing:-
 .sidebar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;height:fit-content;position:sticky;top:80px}
 .sidebar .row{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid var(--border)}
 .sidebar .row:last-child{border-bottom:none}
+.inst{margin:10px 0 18px}.inst-h{display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:14px;color:#fff}
 .sidebar .row span:first-child{color:var(--muted)}
 .sidebar .row span:last-child{color:#fff;font-weight:500}
 .sidebar .cta{display:block;background:#fff;color:#000;padding:12px 16px;border-radius:8px;font-weight:600;margin-top:16px;text-align:center;font-size:14px}
@@ -166,6 +167,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <meta name="twitter:image" content="{SITE_URL}/og.png">
 <meta name="theme-color" content="#0a0a0f">
 <link rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="%23a78bfa"/><text x="32" y="44" font-family="sans-serif" font-size="32" font-weight="800" fill="white" text-anchor="middle">C</text></svg>'>
+<link rel="alternate" type="application/rss+xml" title="New Claude Code skills" href="/new/feed.xml">
 <style>{CSS}</style>
 {extra_head}
 </head>
@@ -185,7 +187,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 {body}
 <footer><div class="wrap">
 <div>© {year} {SITE_NAME} · Community directory, not affiliated with Anthropic</div>
-<div><a href="/sitemap.xml">Sitemap</a> · <a href="/rss.xml">RSS</a></div>
+<div><a href="/badge/">Badge for authors</a> · <a href="/api/v1/skills.json">API</a> · <a href="/sitemap.xml">Sitemap</a> · <a href="/rss.xml">RSS</a></div>
 </div></footer>
 {COPY_JS}
 </body>
@@ -219,6 +221,11 @@ def jsonld_software_app(s: dict) -> str:
         "author": {"@type": "Person", "name": s["author"], "url": s.get("author_url")},
         "offers": {"@type": "Offer", "price": "0" if s.get("price") == "free" else "0", "priceCurrency": "USD"},
     }
+    m = s.get("meta") or {}
+    if m.get("license") and m["license"] != "Other":
+        data["license"] = f"https://spdx.org/licenses/{m['license']}.html"
+    if m.get("pushed_at"):
+        data["dateModified"] = m["pushed_at"]
     return f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
 
 
@@ -327,11 +334,9 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 
     cmd = install_cmd(s)
     install_block = (
-        f"<pre><code>{esc(cmd)}</code></pre>\n"
-        f'<p>Claude Code picks up new skills automatically (run <code>/reload-skills</code> if your skills folder is brand new). See the <a href="{esc(s.get("repo_url", "#"))}" rel="noopener">README</a> for skill-specific setup.</p>'
-        f'<p>Using Codex CLI? Copy the same folder to <code>~/.codex/skills/{esc(s["slug"])}</code> instead.</p>'
-        "<p>On Windows? Follow the <a href='/blog/install-claude-code-skills-windows/'>Windows install guide</a>. New to skills? Read the <a href='/blog/claude-code-skills-beginners-guide/'>beginner's guide</a> or <a href='/blog/claude-code-skills-vs-mcp-servers/'>Claude Code skills vs MCP servers</a>.</p>"
-        "<p>Skill not loading? <a href='/tools/skill-md-validator/'>Validate your SKILL.md</a> in your browser.</p>"
+        X.install_html(s, cmd)
+        + "<p>On Windows? Follow the <a href='/blog/install-claude-code-skills-windows/'>Windows install guide</a>. Using several agents? See <a href='/blog/install-agent-skills-cursor-codex-claude-code/'>3 ways to install a skill</a>. New to skills? Read the <a href='/blog/claude-code-skills-beginners-guide/'>beginner's guide</a>.</p>"
+        "<p>Skill not loading? Check <a href='/blog/claude-code-skill-not-loading/'>10 common causes</a> or <a href='/tools/skill-md-validator/'>validate your SKILL.md</a>.</p>"
     )
     faq, faq_jsonld = faq_block(s, cmd)
 
@@ -344,14 +349,17 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 </div>
 <h1>{esc(s['name'])} <span style="font-weight:400;opacity:.6">· Claude Code skill</span></h1>
 <p class="short">{esc(s.get('short_description', ''))}</p>
+{X.glance_html(s)}
 
 {long_html(s)}
 
 <div class="section-h">Install</div>
 {install_block}
 
+{X.skillmd_html(s)}
+
 <div class="section-h">When it triggers</div>
-{triggers_html}
+{X.triggers_html(s, triggers_html)}
 
 <div class="section-h">Tags</div>
 <div class="tag-cloud">
@@ -359,6 +367,8 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 </div>
 
 {faq}
+
+{X.badge_box(s, SITE_URL)}
 
 <div class="related">
 <h2>Related skills</h2>
@@ -373,6 +383,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 <div class="row"><span>Price</span><span>{esc(s.get('price', 'free'))}</span></div>
 <div class="row"><span>Stars</span><span>{format(s.get('stars') or 0, ',')}</span></div>
 <div class="row"><span>Updated</span><span>{esc(s.get('updated_at', ''))}</span></div>
+{X.sidebar_rows(s)}
 <a class="cta" href="{esc(s.get('repo_url', '#'))}" rel="noopener">View on GitHub →</a>
 {sidebar_promo(s)}
 </aside>
@@ -549,6 +560,11 @@ NOT_FOUND = """<!doctype html>
 
 # --- Data cleanup at build time (scraper output stays untouched) ---------------
 import re as _re
+import extras as X
+try:
+    from troubleshoot_posts import TROUBLESHOOT_POSTS
+except ImportError:
+    TROUBLESHOOT_POSTS = []
 
 FAKE_SEEDS = {"claude-api", "code-review", "dataviz", "deep-research", "docs",
               "google-workspace", "loop", "plugin-authoring", "schedule"}
@@ -655,6 +671,11 @@ def install_cmd(s: dict) -> str:
         path = sub.split("/", 1)[1]
         return (f"git clone --depth 1 {base}.git /tmp/{slug}-src\n"
                 f"cp -r /tmp/{slug}-src/{path} ~/.claude/skills/{slug}")
+    coll = (s.get("meta") or {}).get("skill_md_path", "")
+    if coll and "/" in coll:
+        parent = coll.rsplit("/", 1)[0]
+        return (f"git clone --depth 1 {repo}.git /tmp/{slug}-src\n"
+                f"cp -r /tmp/{slug}-src/{parent}/* ~/.claude/skills/")
     return f"git clone --depth 1 {repo}.git ~/.claude/skills/{slug}"
 
 
@@ -883,6 +904,7 @@ def write_llms(skills: list[dict], bests: list[tuple[str, str, list[dict]]]) -> 
              f"- [All skills as JSON]({SITE_URL}/data/skills.json): name, description, category, tags, stars, repo",
              f"- [Sitemap]({SITE_URL}/sitemap.xml)", "", "## Topic guides"]
     lines += [f"- [Best {lb} skills]({SITE_URL}/best/{b}/)" for b, lb, _ in bests]
+    lines += X.llms_extra(SITE_URL)
     lines += ["", "## Blog"] + [f"- [{p['title']}]({SITE_URL}/blog/{p['slug']}/)" for p in BLOG_POSTS]
     lines += ["", "## Categories"]
     lines += [f"- [{c.replace('-', ' ').title()}]({SITE_URL}/category/{c}/)" for c in cats]
@@ -1170,6 +1192,9 @@ description: Write a CHANGELOG entry for the current changes. Use when the user 
 ]
 
 
+BLOG_POSTS += TROUBLESHOOT_POSTS
+
+
 def blog_cloud() -> str:
     return "".join(f'<a href="/blog/{p["slug"]}/">{esc(p["title"])}</a>' for p in BLOG_POSTS)
 
@@ -1190,7 +1215,7 @@ def subscribe_box() -> str:
         '<p style="margin:6px 0 12px">The index is rescanned from GitHub every week. Subscribe to hear about '
         "notable new skills and new SkillNest packs. Free, unsubscribe anytime.</p>"
         f'<a href="{SUBSCRIBE_URL}" rel="noopener" style="font-weight:600">Subscribe &rarr;</a>'
-        ' &nbsp;·&nbsp; <a href="/rss.xml">RSS feed</a> &nbsp;·&nbsp; <a href="/new/">New this week</a></div>'
+        ' &nbsp;·&nbsp; <a href="/new/feed.xml">RSS feed of new skills</a> &nbsp;·&nbsp; <a href="/new/">New this week</a></div>'
     )
 
 
@@ -1385,6 +1410,10 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
 
     skills = clean_skills(json.loads(DATA.read_text(encoding="utf-8")))
+    _meta = X.load_meta(PROJECT / "data" / "skill_meta.json")
+    for s in skills:
+        s["meta"] = _meta.get(s["slug"]) or {}
+    print(f"[gen] meta for {sum(1 for s in skills if s['meta'])} skills")
     print(f"[gen] {len(skills)} skills")
 
     urls: list[str] = ["/"]
@@ -1454,6 +1483,10 @@ def main() -> int:
     # New this week
     fresh = new_skills(skills)
     write_file("new/index.html", render_new(fresh))
+    write_file("new/feed.xml", X.new_feed(fresh, SITE_URL, SITE_NAME))
+    write_file("badge.svg", X.BADGE_SVG)
+    write_file("badge/index.html", X.render_badge_page(layout, SITE_URL, SITE_NAME))
+    urls.append("/badge/")
     if len(fresh) >= 3:
         urls.append("/new/")
 
@@ -1480,6 +1513,9 @@ def main() -> int:
     # Data endpoint
     for s in skills:
         s["install"] = install_cmd(s)
+    write_file("api/v1/skills.json", X.api_json(skills, SITE_URL, install_cmd))
+    for s in skills:
+        s.pop("meta", None)
     write_file("data/skills.json", json.dumps(skills, ensure_ascii=False, indent=2))
 
     # Sitemap, robots, RSS
