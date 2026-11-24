@@ -96,6 +96,7 @@ h2{font-size:28px;font-weight:700;color:#fff;margin-bottom:20px;letter-spacing:-
 .breadcrumb a:hover{color:var(--accent);text-decoration:none}
 .detail{display:grid;grid-template-columns:1fr 280px;gap:40px;padding:40px 0}
 @media(max-width:800px){.detail{grid-template-columns:1fr}}
+@media(max-width:700px){nav{padding:0;position:static}nav .wrap{flex-wrap:nowrap;overflow-x:auto;gap:18px;white-space:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}nav .wrap::-webkit-scrollbar{display:none}nav a{font-size:14px;padding:13px 0;flex:none}nav .brand{font-size:16px}nav .spacer{display:none}.hero{padding:36px 0 28px}.hero p{font-size:16px}section{padding:28px 0}h2{font-size:23px}.card{padding:16px}.card h3 a,.tags a,footer a{display:inline-block;padding:3px 0}.detail>*,.grid>*{min-width:0}pre,code{max-width:100%}pre{overflow-x:auto}p,li,h1,h2,h3,.crumbs{overflow-wrap:anywhere}table{display:block;overflow-x:auto}}
 .detail h1{font-size:40px;color:#fff;margin-bottom:10px;letter-spacing:-.02em}
 .detail .short{font-size:18px;color:var(--muted);margin-bottom:28px}
 .detail .long{font-size:16px;color:var(--fg);line-height:1.7;margin-bottom:28px}
@@ -344,7 +345,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 <h1>{esc(s['name'])} <span style="font-weight:400;opacity:.6">· Claude Code skill</span></h1>
 <p class="short">{esc(s.get('short_description', ''))}</p>
 
-<p class="long">{esc(s.get('long_description', ''))}</p>
+{long_html(s)}
 
 <div class="section-h">Install</div>
 {install_block}
@@ -1279,6 +1280,47 @@ def skill_title(s: dict) -> str:
     return f"{name} — Claude Code Skill: Install & Usage"
 
 
+_NAV_SENT_RX = _re.compile(r"^(follow me|follow @|check out|star |⭐|if you (like|find)|give (it|us) a star|join (our|the) discord|already installed)", _re.I)
+
+
+def clean_readme(t: str) -> str:
+    """Turn a raw README excerpt into plain prose; '' if nothing readable is left."""
+    t = t or ""
+    t = _re.sub(r"\x60\x60\x60[\s\S]*?\x60\x60\x60", " ", t)
+    t = _re.sub(r"<!--[\s\S]*?-->", " ", t)
+    t = _re.sub(r"<[a-zA-Z/][^>]*$", " ", t)
+    t = _re.sub(r"\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)", " ", t)
+    t = _re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", t)
+    t = _re.sub(r"\[!?\[[^\]]*\]\]?\[[^\]]*\]\]?", " ", t)
+    t = _re.sub(r"\[([^\]]*)\]\[[^\]]*\]", r"\1", t)
+    t = _re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)
+    t = _re.sub(r"<[^>]+>", " ", t)
+    t = _re.sub(r"https?://\S+", " ", t)
+    t = _re.sub(r"(\*\*|__|\x60|~~|\*)", "", t)
+    t = _re.sub(r"(^|\s)[#>]+(?=\s)", " ", t)
+    t = _re.sub(r"[|\[\]{}<>]", " ", t)
+    t = _re.sub(r"&[a-z]+;", " ", t)
+    t = _re.sub(r"\s+", " ", t)
+    t = _re.sub(r"(?:[^·.!?:]{1,25}?\s?·\s?)+\S+", " ", t)
+    t = _re.sub(r"(?:\s-\s[A-Z][\w' ]{1,25}){2,}", " ", t)
+    t = _re.sub(r"[-=]{3,}", " ", t)
+    sents = [x for x in _re.split(r"(?<=[.!?。])\s+", t) if not _NAV_SENT_RX.match(x.strip())]
+    t = _re.sub(r"\s+", " ", " ".join(sents)).strip()
+    if len(t) > 600:
+        cut = t[:600]
+        k = max(cut.rfind(". "), cut.rfind("。"))
+        t = cut[:k + 1] if k > 200 else _re.sub(r"\s+\S*$", "", cut) + "…"
+    latin = len(_re.findall(r"[A-Za-z]", t))
+    if len(t) < 60 or latin < len(t) * 0.5:
+        return ""
+    return t
+
+
+def long_html(s: dict) -> str:
+    ld = s.get("long_description") or ""
+    return f'<p class="long">{esc(ld)}</p>' if ld else ""
+
+
 def tidy_skill(s: dict) -> None:
     """Keep the repo's own casing for short names (ECC, ELI5) and give non-English descriptions an English line."""
     seg = (s.get("repo_url") or "").rstrip("/").split("/")[-1]
@@ -1287,6 +1329,7 @@ def tidy_skill(s: dict) -> None:
     if seg and len(seg) <= 5 and seg.lower() == (s.get("name") or "").replace(" ", "-").lower():
         s["name"] = seg
     s["tags"] = list(dict.fromkeys(TAG_SYNONYMS.get(t, t) for t in (s.get("tags") or [])))
+    s["long_description"] = clean_readme(s.get("long_description", ""))
     desc = s.get("short_description") or ""
     clean = _re.sub(r"\s*(?:\b[A-Za-z]{1,12}:\s+)?\(?https?://\S+\)?", "", desc).strip(" -–—:|·")
     if clean != desc:
