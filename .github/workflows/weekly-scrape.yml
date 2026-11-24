@@ -27,6 +27,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scraper/scrape.py
 
+      - name: Enrich from GitHub (license, SKILL.md, scripts)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/enrich.py
+
       - name: Build static site
         env:
           SITE_URL: https://skillnest.dev
@@ -40,6 +45,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/skills.json
+          [ -f data/skill_meta.json ] && git add data/skill_meta.json
           if git diff --cached --quiet; then
             echo "No changes to skills.json — nothing to commit."
             exit 0
