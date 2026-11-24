@@ -162,6 +162,8 @@ def main() -> int:
             if md is not None:
                 m["skill_md"] = parse_skill_md(md)
                 m["has_scripts"] = has_code((r.get("dir") or {}).get("entries") if sub else root)
+            elif sub and not sub.startswith("skills/"):
+                second.append((slug, o, n, f"skills/{sub}", []))
             else:
                 for base, node in (("skills", r.get("skills")), (".claude/skills", r.get("cskills"))):
                     dirs = tree_dirs(node)
