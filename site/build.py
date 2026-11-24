@@ -175,6 +175,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <a href="/category/development/">Categories</a>
 <a href="/new/">New</a>
 <a href="/best/">Best skills</a>
+<a href="/tools/skill-md-validator/">Validator</a>
 <a href="/blog/">Blog</a>
 <a href="/submit/">Submit a skill</a>
 <div class="spacer"></div>
@@ -328,6 +329,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
         f'<p>Claude Code picks up new skills automatically (run <code>/reload-skills</code> if your skills folder is brand new). See the <a href="{esc(s.get("repo_url", "#"))}" rel="noopener">README</a> for skill-specific setup.</p>'
         f'<p>Using Codex CLI? Copy the same folder to <code>~/.codex/skills/{esc(s["slug"])}</code> instead.</p>'
         "<p>On Windows? Follow the <a href='/blog/install-claude-code-skills-windows/'>Windows install guide</a>. New to skills? Read the <a href='/blog/claude-code-skills-beginners-guide/'>beginner's guide</a> or <a href='/blog/claude-code-skills-vs-mcp-servers/'>Claude Code skills vs MCP servers</a>.</p>"
+        "<p>Skill not loading? <a href='/tools/skill-md-validator/'>Validate your SKILL.md</a> in your browser.</p>"
     )
     faq, faq_jsonld = faq_block(s, cmd)
 
@@ -1286,6 +1288,11 @@ def tidy_skill(s: dict) -> None:
 
 
 try:
+    from validator_page import render_validator
+except ImportError:  # page module missing: site still builds without the tool
+    render_validator = None
+
+try:
     from best_guides import BEST_GUIDES
 except ImportError:  # guides file missing: pages still build without intros
     BEST_GUIDES = {}
@@ -1382,6 +1389,11 @@ def main() -> int:
         write_file(f"compare/{a['slug']}-vs-{b['slug']}/index.html", render_compare(a, b))
         urls.append(f"/compare/{a['slug']}-vs-{b['slug']}/")
         compare_count += 1
+
+    # Tools
+    if render_validator:
+        write_file("tools/skill-md-validator/index.html", render_validator(layout))
+        urls.append("/tools/skill-md-validator/")
 
     # New this week
     fresh = new_skills(skills)
