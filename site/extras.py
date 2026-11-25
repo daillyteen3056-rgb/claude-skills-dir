@@ -181,13 +181,39 @@ def badge_md(site_url: str, slug: str) -> str:
 
 
 def badge_box(s: dict, site_url: str) -> str:
-    snippet = badge_md(site_url, s["slug"])
-    return ('<div style="margin:28px 0;padding:16px 18px;border:1px dashed rgba(127,127,127,.45);border-radius:12px">'
-            f'<strong>Maintain this skill?</strong> Add the badge to your README: '
-            f'<img src="/badge.svg" alt="Listed on SkillNest" width="142" height="20" style="vertical-align:middle">'
-            f'<pre style="white-space:pre-wrap;margin-top:8px"><code>{esc(snippet)}</code></pre>'
-            f'{COPY_BTN.format(cmd=esc(snippet))} &nbsp;<a href="/badge/">More badge options</a></div>')
+    """Ready-to-copy README badge snippet with the skill's slug pre-filled.
 
+    Shown on every skill page so the author can grab their own embed code in one
+    click, instead of hand-editing a placeholder slug on a separate page.
+    """
+    slug = s["slug"]
+    skill_url = f"{site_url}/skills/{slug}/"
+    badge_src = f"{site_url}/badge.svg"
+    md = f"[![Listed on SkillNest]({badge_src})]({skill_url})"
+    html_snip = (
+        f'<a href="{skill_url}">'
+        f'<img src="{badge_src}" alt="Listed on SkillNest" width="142" height="20">'
+        '</a>'
+    )
+    md_disp = md.replace("<", "&lt;").replace(">", "&gt;")
+    html_disp = html_snip.replace("<", "&lt;").replace(">", "&gt;")
+    return (
+        '<div class="section-h">Maintain this skill?</div>\n'
+        '<div class="badge-box">\n'
+        f'  <p>Add this badge to your README — it links back to <a href="{skill_url}">your SkillNest page</a>, so visitors of your repo can grab the install command and see related skills.</p>\n'
+        f'  <p><img src="{badge_src}" alt="Listed on SkillNest" width="142" height="20" style="vertical-align:middle"></p>\n'
+        '  <div class="snippet"><label>Markdown (GitHub README)</label>\n'
+        f'    <pre><code>{md_disp}</code></pre>\n'
+        '    <button type="button" class="copy-btn">Copy</button>\n'
+        '  </div>\n'
+        '  <div class="snippet"><label>HTML</label>\n'
+        f'    <pre><code>{html_disp}</code></pre>\n'
+        '    <button type="button" class="copy-btn">Copy</button>\n'
+        '  </div>\n'
+        '  <p class="muted"><a href="/badge/">More badge options →</a></p>\n'
+        '</div>\n'
+        '<script>document.querySelectorAll(".badge-box .copy-btn").forEach(function(b){b.addEventListener("click",function(){var c=b.closest(".snippet").querySelector("code");navigator.clipboard.writeText(c.textContent).then(function(){var o=b.textContent;b.textContent="Copied!";setTimeout(function(){b.textContent=o;},1500);});});});</script>'
+    )
 
 def render_badge_page(layout, site_url: str, site_name: str) -> str:
     md = badge_md(site_url, "YOUR-SKILL-SLUG")
