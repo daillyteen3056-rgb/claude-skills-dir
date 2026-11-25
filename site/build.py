@@ -216,19 +216,21 @@ def jsonld_software_app(s: dict) -> str:
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": s["name"],
+        "url": f"{SITE_URL}/skills/{s['slug']}/",
         "description": s.get("long_description") or s.get("short_description", ""),
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Cross-platform",
         "author": {"@type": "Person", "name": s["author"], "url": s.get("author_url")},
-        "offers": {"@type": "Offer", "price": "0" if s.get("price") == "free" else "0", "priceCurrency": "USD"},
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
     }
+    if s.get("repo_url"):
+        data["downloadUrl"] = s["repo_url"]
     m = s.get("meta") or {}
     if m.get("license") and m["license"] != "Other":
         data["license"] = f"https://spdx.org/licenses/{m['license']}.html"
     if m.get("pushed_at"):
         data["dateModified"] = m["pushed_at"]
     return f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
-
 
 def promo_block_full() -> str:
     return f"""<a class="promo" href="{esc(gumroad_url('home'))}" target="_blank" rel="noopener sponsored" style="text-decoration:none">
@@ -486,17 +488,57 @@ def write_file(rel: str, content: str) -> None:
 
 
 def write_sitemap(urls: list[str], lastmods: dict | None = None) -> None:
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    items = "\n".join(
-        f"<url><loc>{SITE_URL}{u}</loc><lastmod>{(lastmods or {}).get(u) or now}</lastmod></url>"
-        for u in urls
-    )
-    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-{items}
-</urlset>"""
-    write_file("sitemap.xml", xml)
+    """Write grouped sitemap-<type>.xml files plus a sitemap.xml index.
 
+    Only entries with a real lastmod get a <lastmod> tag; omitting it is better
+    SEO than stamping every URL with today's date, which Google ignores or distrusts.
+    """
+    lastmods = lastmods or {}
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    buckets = {
+        "skills":     [u for u in urls if u.startswith("/skills/")],
+        "categories": [u for u in urls if u.startswith("/category/")],
+        "tags":       [u for u in urls if u.startswith("/tag/")],
+        "compare":    [u for u in urls if u.startswith("/compare/")],
+        "best":       [u for u in urls if u.startswith("/best/")],
+        "blog":       [u for u in urls if u.startswith("/blog/")],
+        "tools":      [u for u in urls if u.startswith("/tools/")],
+    }
+    taken = {u for group in buckets.values() for u in group}
+    buckets["pages"] = [u for u in urls if u not in taken]
+
+    def _entry(u: str) -> str:
+        lm = lastmods.get(u)
+        if lm:
+            return f"<url><loc>{SITE_URL}{u}</loc><lastmod>{lm}</lastmod></url>"
+        return f"<url><loc>{SITE_URL}{u}</loc></url>"
+
+    written: list[tuple[str, str]] = []
+    for name, group in buckets.items():
+        if not group:
+            continue
+        items = "\n".join(_entry(u) for u in group)
+        xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f"{items}\n</urlset>"
+        )
+        fname = f"sitemap-{name}.xml"
+        write_file(fname, xml)
+        group_lms = [lastmods.get(u) for u in group if lastmods.get(u)]
+        written.append((fname, max(group_lms) if group_lms else now))
+
+    idx_items = "\n".join(
+        f"<sitemap><loc>{SITE_URL}/{f}</loc><lastmod>{lm}</lastmod></sitemap>"
+        for f, lm in written
+    )
+    idx_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{idx_items}\n</sitemapindex>"
+    )
+    write_file("sitemap.xml", idx_xml)
 
 def write_robots() -> None:
     txt = f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n"
