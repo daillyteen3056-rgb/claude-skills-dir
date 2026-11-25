@@ -129,6 +129,18 @@ footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-
 .promo .btn b{color:#000;margin-left:6px}
 .promo.compact{padding:18px;margin:16px 0;flex-direction:column;align-items:flex-start;text-align:left}
 .promo.compact .btn{width:100%;text-align:center;margin-top:12px}
+
+
+/* badge-box: per-skill README snippet UI (added for author outreach) */
+.badge-box{background:var(--card);border:1px solid #22222d;border-radius:8px;padding:16px 18px;margin:24px 0 8px}
+.badge-box p{margin:0 0 10px}
+.badge-box .muted{color:var(--muted);font-size:13px;margin-top:12px}
+.badge-box .snippet{margin:14px 0 8px}
+.badge-box .snippet label{display:block;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.badge-box .snippet pre{background:#0a0a0f;border:1px solid #22222d;border-radius:6px;padding:10px 12px;margin:0 0 8px;overflow-x:auto;font-size:12.5px;line-height:1.5}
+.badge-box .snippet code{display:block;white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--fg);background:transparent;padding:0}
+.badge-box .copy-btn{background:transparent;color:var(--accent);border:1px solid #333340;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s}
+.badge-box .copy-btn:hover{background:#1a1a24;border-color:var(--accent)}
 """
 
 
