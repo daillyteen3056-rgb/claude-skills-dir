@@ -182,4 +182,80 @@ BEST_GUIDES = {
         ["Scaffold a 2D platformer in Godot with a player controller",
          "Add a pause menu and save system to this game"],
     ),
+
+    # --- New discovery pages (added for SEO: high-intent "best X" queries) ---
+    "typescript": (
+        "TypeScript skills help Claude Code write and maintain type-safe code without you fighting the compiler. "
+        "The best ones understand your existing tsconfig, respect strict null checks, infer types from usage rather than annotating everywhere, "
+        "and can refactor from any to concrete shapes across many files at once. They flag unsafe casts and suggest discriminated unions "
+        "where you had loose booleans. They work best on repos that already have TypeScript configured; converting a JavaScript project is a separate job.",
+        ["Convert this file from JavaScript to strict TypeScript without changing runtime behavior",
+         "Find every `any` in src/ and propose a concrete type based on how the value is used"],
+    ),
+    "rust": (
+        "Rust skills help Claude Code work with the borrow checker rather than against it. "
+        "Good ones handle lifetime annotations, Result and Option propagation, and common async patterns with tokio. "
+        "They can take a working prototype and make it idiomatic — replacing unwraps with proper error types, pushing iterators where you had loops, "
+        "and suggesting zero-copy alternatives. They assume cargo is available locally and that you have compiled at least once.",
+        ["Replace every unwrap() in this crate with a proper Result-returning error type",
+         "Make this function generic over any iterator of T instead of taking Vec<T>"],
+    ),
+    "golang": (
+        "Go skills help Claude Code produce idiomatic Go: small interfaces, context propagation, explicit error returns, table-driven tests. "
+        "They understand that in Go, verbose and obvious beats clever and generic. "
+        "The best ones can bootstrap a well-structured service with handlers, middleware, graceful shutdown, and the Makefile targets you would actually run.",
+        ["Set up a Go HTTP service with graceful shutdown, structured logging and a /healthz endpoint",
+         "Add table-driven tests for every exported function in this package"],
+    ),
+    "debugging": (
+        "Debugging skills turn Claude Code into a methodical bug-hunter rather than a guess-and-check assistant. "
+        "The best ones ask for the actual error output and reproduction steps before proposing fixes, bisect through recent commits when the bug is new, "
+        "and distinguish between the symptom and the root cause. They add diagnostic logging, reproduce the failure in a test, then write the fix — in that order.",
+        ["Help me find the root cause of this intermittent test failure, not just a workaround",
+         "Add diagnostic logging around the bug, reproduce it, then write a regression test"],
+    ),
+    "refactoring": (
+        "Refactoring skills let Claude Code change the shape of your codebase without changing its behavior. "
+        "The best ones work in small verifiable steps: extract a function, run the tests, commit, repeat. "
+        "They can rename across files without breaking imports, pull duplicate logic into a shared module, and migrate from one framework version to the next with a rollback plan. "
+        "Always run tests before and after — even a careful refactor can break a subtle contract.",
+        ["Extract the duplicated validation logic in these 3 handlers into a shared middleware",
+         "Migrate this file from the v1 API to v2, keeping the external interface unchanged"],
+    ),
+    "api": (
+        "API skills help Claude Code design, implement, and document HTTP and GraphQL endpoints. "
+        "The best ones start from the contract — an OpenAPI spec or GraphQL schema — then generate server and client code consistent with it. "
+        "They handle the unglamorous parts correctly: pagination, idempotency keys, rate limits, proper status codes, and useful error bodies. "
+        "They can also diff two versions of your schema and tell you what breaks downstream consumers.",
+        ["Design a REST API for this feature with proper status codes, error shapes and pagination",
+         "Generate an OpenAPI spec from the handlers in this folder and flag inconsistencies"],
+    ),
+    "database": (
+        "Database skills help Claude Code work with schemas, queries, and migrations as first-class artifacts instead of afterthoughts. "
+        "The best ones understand that a bad index is worse than no index, that migrations must be reversible, and that an ORM can hide an N+1 query for a long time. "
+        "They can read EXPLAIN output, propose composite indexes for your actual query patterns, and write migration scripts that run safely on production-scale tables.",
+        ["Find the N+1 queries in this code and rewrite them with a single join or a batched load",
+         "Write a reversible migration that adds a composite index on (user_id, created_at DESC)"],
+    ),
+    "beginners": (
+        "Skills for beginners lower the activation energy of Claude Code: they explain what they are doing, ask fewer surprising questions, and default to safe operations on your repo. "
+        "The best ones include setup checklists, a working example you can run in two minutes, and clear stopping conditions when something looks off. "
+        "They are a good choice for your first week and remain useful later when you onboard someone new.",
+        ["Walk me through setting this up step by step and explain what each file does",
+         "Make the safest possible change to this file, and tell me what you are about to do first"],
+    ),
+    "mobile": (
+        "Mobile skills help Claude Code work on iOS, Android and cross-platform projects — Swift, Kotlin, React Native, Flutter. "
+        "The best ones understand the platform conventions rather than porting web patterns directly: safe area insets, dark mode, dynamic type, reduced motion, "
+        "and the specific quirks of each store review process. They can also run and debug on a simulator when you have one connected locally.",
+        ["Add dynamic type and dark mode support to this screen, keeping the existing layout",
+         "Convert this React Native component to a native SwiftUI equivalent"],
+    ),
+    "ai-ml": (
+        "AI and ML skills help Claude Code work with LLMs, embeddings, vector stores and small models — the layer that sits between your product and the model provider. "
+        "The best ones treat prompts as versioned artifacts, cache responses when it is safe to, and fall back gracefully when a model is slow or down. "
+        "They can also evaluate a prompt change on a small dataset before you ship it, instead of relying on vibes.",
+        ["Add a cache layer in front of my LLM calls with a safe key based on the prompt and model",
+         "Set up an eval harness for this prompt and run my two candidate versions on 50 saved examples"],
+    ),
 }
