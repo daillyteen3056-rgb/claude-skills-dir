@@ -863,6 +863,17 @@ BEST_TOPICS = [
     ("automation", "Automation", r"automat|workflow|browser|scrap|crawl"),
     ("mcp", "MCP", r"\bmcp\b"),
     ("game-dev", "Game Development", r"godot|\bgame|unity|bevy"),
+    # --- New discovery pages (added for SEO: high-intent "best X" queries) ---
+    ("typescript", "TypeScript", r"typescript|\btsx?\b|\bts-"),
+    ("rust", "Rust", r"\brust\b|\bcargo\b|\bcrate\b"),
+    ("golang", "Go", r"\bgolang\b|\bgo-lang\b"),
+    ("debugging", "Debugging", r"debug|troubleshoot|stack trace|error handling|fix.{1,10}bug"),
+    ("refactoring", "Refactoring", r"refactor|clean.?up|rewrite|modernize|migrat"),
+    ("api", "APIs & Backend", r"\bapi\b|\brest\b|graphql|endpoint|openapi|swagger"),
+    ("database", "Databases", r"database|\bdb\b|\bsql\b|postgres|mysql|mongodb|redis|supabase|prisma"),
+    ("beginners", "Beginners", r"beginner|starter|intro|learn|getting.started|first.steps"),
+    ("mobile", "Mobile (iOS & Android)", r"\bios\b|\bandroid\b|react.native|flutter|swift|kotlin|\bmobile\b"),
+    ("ai-ml", "AI & Machine Learning", r"machine.learning|\bllm\b|\bembedding\b|\bvector\b|\brag\b|\bprompt\b"),
 ]
 
 
