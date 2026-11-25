@@ -871,7 +871,7 @@ BEST_TOPICS = [
     ("refactoring", "Refactoring", r"refactor|clean.?up|rewrite|modernize|migrat"),
     ("api", "APIs & Backend", r"\bapi\b|\brest\b|graphql|endpoint|openapi|swagger"),
     ("database", "Databases", r"database|\bdb\b|\bsql\b|postgres|mysql|mongodb|redis|supabase|prisma"),
-    ("beginners", "Beginners", r"beginner|starter|intro|learn|getting.started|first.steps"),
+    ("beginners", "Beginner-Friendly", r"beginner|getting.started|from.scratch|newbie|first.steps|for.beginners"),
     ("mobile", "Mobile (iOS & Android)", r"\bios\b|\bandroid\b|react.native|flutter|swift|kotlin|\bmobile\b"),
     ("ai-ml", "AI & Machine Learning", r"machine.learning|\bllm\b|\bembedding\b|\bvector\b|\brag\b|\bprompt\b"),
 ]
