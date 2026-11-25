@@ -534,12 +534,15 @@ Referrer-Policy: strict-origin-when-cross-origin
 Permissions-Policy: geolocation=(), microphone=(), camera=()
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
+CDN-Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
 /*.xml
 Cache-Control: public, max-age=3600, s-maxage=86400
+CDN-Cache-Control: public, max-age=86400
 
 /data/*
 Cache-Control: public, max-age=3600
+CDN-Cache-Control: public, max-age=3600
 Access-Control-Allow-Origin: *
 """
 
