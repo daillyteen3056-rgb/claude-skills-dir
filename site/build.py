@@ -528,21 +528,19 @@ def write_rss(skills: list[dict]) -> None:
 
 CF_HEADERS = """# Cloudflare Pages custom headers
 /*
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-
-/*.html
-  Cache-Control: public, max-age=300, s-maxage=3600
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), microphone=(), camera=()
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=604800
 
 /*.xml
-  Cache-Control: public, max-age=3600, s-maxage=86400
+Cache-Control: public, max-age=3600, s-maxage=86400
 
 /data/*
-  Cache-Control: public, max-age=3600
-  Access-Control-Allow-Origin: *
+Cache-Control: public, max-age=3600
+Access-Control-Allow-Origin: *
 """
 
 CF_REDIRECTS = """# Cloudflare Pages redirects
