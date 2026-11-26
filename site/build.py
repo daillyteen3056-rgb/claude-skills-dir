@@ -143,6 +143,8 @@ footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-
 .badge-box .copy-btn:hover{background:#1a1a24;border-color:var(--accent)}
 
 .featured{color:var(--muted);font-size:14px;margin:4px 0 16px}.featured a{color:var(--accent);text-decoration:none}.featured a:hover{text-decoration:underline}
+
+.cmp-scroll{overflow-x:auto}.cmp-table{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:14px}.cmp-table th,.cmp-table td{border:1px solid #22222d;padding:8px 10px;text-align:left;vertical-align:top}.cmp-table tr th:first-child{color:var(--muted);font-weight:500;width:22%}.cmp-verdict{margin:6px 0 18px;padding-left:20px}.cmp-verdict li{margin:4px 0}.cmp pre{background:#0a0a0f;border:1px solid #22222d;border-radius:6px;padding:10px 12px;overflow-x:auto}
 """
 
 
@@ -465,45 +467,120 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
 
 
 def render_compare(a: dict, b: dict) -> str:
-    def row(label: str, va, vb) -> str:
-        return (f"<tr><td>{esc(label)}</td>"
-                f"<td>{esc(str(va))}</td><td>{esc(str(vb))}</td></tr>")
-    body = f"""<div class="wrap">
-<div class="breadcrumb"><a href="/">Home</a> › Compare</div>
-<section class="hero" style="padding:40px 0 20px">
-<h1>{esc(a['name'])} vs {esc(b['name'])}</h1>
-<p>Side-by-side comparison of two Claude Code skills. Which fits your workflow?</p>
-</section>
-<section>
-<table style="width:100%;border-collapse:collapse" cellpadding="10">
-<thead><tr style="border-bottom:1px solid var(--border)">
-<th align="left" style="color:var(--muted);font-weight:500">Field</th>
-<th align="left" style="color:#fff">{esc(a['name'])}</th>
-<th align="left" style="color:#fff">{esc(b['name'])}</th>
-</tr></thead>
-<tbody>
-{row("Category", a.get("category"), b.get("category"))}
-{row("Author", a["author"], b["author"])}
-{row("Price", a.get("price"), b.get("price"))}
-{row("Difficulty", a.get("difficulty"), b.get("difficulty"))}
-{row("Stars", format(a.get("stars") or 0, ","), format(b.get("stars") or 0, ","))}
-{row("Short description", a.get("short_description", ""), b.get("short_description", ""))}
-</tbody></table>
-</section>
-<section>
-<div class="grid">
-{skill_card(a)}
-{skill_card(b)}
-</div>
-</section>
-</div>"""
-    return layout(
-        title=f"{a['name']} vs {b['name']}: Claude Code Skills Compared — {SITE_NAME}",
-        description=f"{a['name']} vs {b['name']}: compare these two Claude Code skills side by side — what each does, GitHub stars, price and difficulty.",
-        body=body,
-        canonical=f"/compare/{a['slug']}-vs-{b['slug']}/",
-    )
+    """Side-by-side comparison built only from real data: shared and unique tags, stars,
+    last update, license, trigger count and install commands. No invented claims, so each
+    page carries content specific to the pair."""
+    na, nb = a["name"], b["name"]
+    ta = {t.lower() for t in (a.get("tags") or [])} - GENERIC_TAGS
+    tb = {t.lower() for t in (b.get("tags") or [])} - GENERIC_TAGS
+    shared = sorted(ta & tb)
+    only_a = sorted(ta - tb)[:6]
+    only_b = sorted(tb - ta)[:6]
+    sa, sb = a.get("stars") or 0, b.get("stars") or 0
+    ma, mb = a.get("meta") or {}, b.get("meta") or {}
+    ua = (ma.get("pushed_at") or a.get("updated_at") or "")[:10]
+    ub = (mb.get("pushed_at") or b.get("updated_at") or "")[:10]
+    tra, trb = a.get("triggers") or [], b.get("triggers") or []
+    ca, cb = install_cmd(a), install_cmd(b)
 
+    def chips(tags):
+        return " ".join("<code>" + esc(t) + "</code>" for t in tags) or "—"
+
+    def link(s):
+        return '<a href="/skills/' + esc(s["slug"]) + '/">' + esc(s["name"]) + "</a>"
+
+    def author(s):
+        return ('<a href="' + esc(s.get("author_url") or "#") + '" rel="noopener">'
+                + esc(s.get("author") or "") + "</a>")
+
+    rows = [
+        ("Category", esc(a.get("category", "other")), esc(b.get("category", "other"))),
+        ("Author", author(a), author(b)),
+        ("GitHub stars", fmt_stars(sa), fmt_stars(sb)),
+        ("Last updated", esc(ua) or "—", esc(ub) or "—"),
+        ("License", esc(ma.get("license") or "—"), esc(mb.get("license") or "—")),
+        ("Difficulty", esc(a.get("difficulty", "beginner")), esc(b.get("difficulty", "beginner"))),
+        ("Price", esc(a.get("price", "free")), esc(b.get("price", "free"))),
+        ("Trigger phrases", str(len(tra)), str(len(trb))),
+        ("Unique focus", chips(only_a), chips(only_b)),
+    ]
+    table = "".join("<tr><th>" + r[0] + "</th><td>" + r[1] + "</td><td>" + r[2] + "</td></tr>" for r in rows)
+
+    verdict = []
+    if shared:
+        verdict.append("Both skills cover " + ", ".join(esc(t) for t in shared[:5]) + ".")
+    if only_a:
+        verdict.append("Pick " + link(a) + " if you need " + ", ".join(esc(t) for t in only_a[:3]) + ".")
+    if only_b:
+        verdict.append("Pick " + link(b) + " if you need " + ", ".join(esc(t) for t in only_b[:3]) + ".")
+    if sa and sb and max(sa, sb) >= 1.5 * min(sa, sb):
+        top = a if sa > sb else b
+        verdict.append(link(top) + " is the more widely used repo (" + fmt_stars(max(sa, sb))
+                       + " vs " + fmt_stars(min(sa, sb)) + " GitHub stars).")
+    if ua and ub and ua != ub:
+        newer = a if ua > ub else b
+        verdict.append(link(newer) + " was updated more recently (" + esc(max(ua, ub)) + ").")
+    verdict_html = "".join("<li>" + v + "</li>" for v in verdict)
+
+    mem = _BEST_MEMBERSHIP or {}
+    in_a = {t for t, _ in mem.get(a["slug"], [])}
+    shared_guides = ['<a href="/best/' + t + '/">Best Claude Code skills for ' + esc(label) + "</a>"
+                     for t, label in mem.get(b["slug"], []) if t in in_a]
+    guides_html = ("<p>Both appear in: " + " · ".join(shared_guides) + "</p>") if shared_guides else ""
+
+    diff = (na + " focuses on " + (", ".join(only_a[:3]) or "its own feature set") + "; "
+            + nb + " focuses on " + (", ".join(only_b[:3]) or "its own feature set") + ".")
+    if shared:
+        diff += " Both cover " + ", ".join(shared[:3]) + "."
+    qa = [
+        ("What is the difference between " + na + " and " + nb + "?", diff),
+        ("Can I install both " + na + " and " + nb + "?",
+         "Yes. Each skill lives in its own folder under ~/.claude/skills/ (or .claude/skills/ inside a "
+         "project), and Claude Code loads whichever one matches your request based on its description."),
+        ("Which is more popular, " + na + " or " + nb + "?",
+         (na if sa >= sb else nb) + " has more GitHub stars (" + fmt_stars(max(sa, sb))
+         + " vs " + fmt_stars(min(sa, sb)) + ")."),
+    ]
+    faq_html = "".join("<h3>" + esc(q) + "</h3><p>" + esc(ans) + "</p>" for q, ans in qa)
+    faq_ld = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
+        {"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": ans}}
+        for q, ans in qa]}
+    crumb_ld = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": SITE_URL + "/"},
+        {"@type": "ListItem", "position": 2, "name": na, "item": SITE_URL + "/skills/" + a["slug"] + "/"},
+        {"@type": "ListItem", "position": 3, "name": na + " vs " + nb},
+    ]}
+    extra_head = ('<script type="application/ld+json">' + json.dumps(faq_ld, ensure_ascii=False) + "</script>"
+                  + '<script type="application/ld+json">' + json.dumps(crumb_ld, ensure_ascii=False) + "</script>")
+
+    overlap = esc(", ".join(shared[:3])) or "similar tasks"
+    body = (
+        '<div class="wrap cmp">'
+        + '<div class="breadcrumb"><a href="/">Home</a> › ' + link(a) + " › vs " + esc(nb) + "</div>"
+        + "<h1>" + esc(na) + " vs " + esc(nb) + "</h1>"
+        + '<p class="short">Two Claude Code skills that overlap on ' + overlap
+        + ". Here is how they differ, using data from their GitHub repos.</p>"
+        + '<div class="section-h">Quick verdict</div><ul class="cmp-verdict">' + verdict_html + "</ul>"
+        + '<div class="section-h">Side by side</div><div class="cmp-scroll"><table class="cmp-table">'
+        + "<tr><th></th><th>" + link(a) + "</th><th>" + link(b) + "</th></tr>" + table + "</table></div>"
+        + '<div class="section-h">What each one does</div>'
+        + "<h2>" + esc(na) + "</h2><p>" + esc(a.get("short_description", "")) + "</p>"
+        + "<h2>" + esc(nb) + "</h2><p>" + esc(b.get("short_description", "")) + "</p>"
+        + '<div class="section-h">Install</div>'
+        + "<p>" + link(a) + ":</p><pre><code>" + esc(ca) + "</code></pre>"
+        + "<p>" + link(b) + ":</p><pre><code>" + esc(cb) + "</code></pre>"
+        + guides_html
+        + '<div class="section-h">FAQ</div>' + faq_html
+        + "</div>"
+    )
+    return layout(
+        title=na + " vs " + nb + ": Claude Code Skills Compared — " + SITE_NAME,
+        description=(na + " vs " + nb + " for Claude Code: what they share, key differences, "
+                     "GitHub stars, last update and install commands for both."),
+        body=body,
+        canonical="/compare/" + a["slug"] + "-vs-" + b["slug"] + "/",
+        extra_head=extra_head,
+    )
 
 def render_submit() -> str:
     body = """<div class="wrap">
@@ -656,7 +733,7 @@ LEAKED = {"claude-code", "free-claude-code", "system-prompts-leaks"}
 NON_SKILL_RX = _re.compile(
     r"github\.com/[^/]+/awesome[-_]|github\.com/f/prompts\.chat|github\.com/shareAI-lab/learn-claude-code"
     r"|github\.com/anthropics/skills/tree/main/(spec|template)/?$"
-    r"|github\.com/[^/]+/https?-github",  # copies named after another repo URL
+    r"|github\.com/[^/]+/https?-github|github\.com/[^/]+/gh-repo-clone-",  # copies named after another repo URL
     _re.I,
 )
 SEED_URLS = {s: f"https://github.com/anthropics/skills/tree/main/skills/{s}"
@@ -688,7 +765,7 @@ CATEGORY_OVERRIDES.update({
     "graphify": "development", "impeccable": "design", "hyperframes": "content-creation", "ruview": "other",
 })
 CATEGORY_RULES = [(c, _re.compile(p)) for c, p in [
-    ("game-dev", r"godot|\bgame|unity|bevy|unreal"),
+    ("game-dev", r"\bgodot|\bgames?\b(?!-chang)|game.?dev|\bunity\b|\bbevy\b|\bunreal\b"),
     ("security", r"security|pentest|vulnerab|audit|\bctf\b"),
     ("design", r"\bui\b|ui-ux|design|figma|tailwind|animation|frontend"),
     ("content-creation", r"video|image|tts|youtube|tiktok|podcast|writing|content|copywrit|humaniz"),
@@ -924,7 +1001,8 @@ BEST_TOPICS = [
     ("obsidian", "Obsidian & Notes", r"obsidian|note-taking|\bnotes\b"),
     ("automation", "Automation", r"automat|workflow|browser|scrap|crawl"),
     ("mcp", "MCP", r"\bmcp\b"),
-    ("game-dev", "Game Development", r"godot|\bgame|unity|bevy"),
+    ("game-dev", "Game Development", r"\bgodot|\bgames?\b(?!-chang)|game.?dev|\bunity\b|\bbevy\b|\bunreal\b|\bphaser\b|\broblox\b|\bsprites?\b"),
+    ("humanizer", "Humanizing AI Text", r"humaniz|undetect|sound human|avoid.ai.writing"),
     # --- New discovery pages (added for SEO: high-intent "best X" queries) ---
     ("typescript", "TypeScript", r"typescript|\btsx?\b|\bts-"),
     ("rust", "Rust", r"\brust\b|\bcargo\b|\bcrate\b"),
