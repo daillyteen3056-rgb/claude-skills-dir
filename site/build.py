@@ -141,6 +141,8 @@ footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-
 .badge-box .snippet code{display:block;white-space:pre;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--fg);background:transparent;padding:0}
 .badge-box .copy-btn{background:transparent;color:var(--accent);border:1px solid #333340;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s}
 .badge-box .copy-btn:hover{background:#1a1a24;border-color:var(--accent)}
+
+.featured{color:var(--muted);font-size:14px;margin:4px 0 16px}.featured a{color:var(--accent);text-decoration:none}.featured a:hover{text-decoration:underline}
 """
 
 
@@ -334,6 +336,30 @@ def render_home(skills: list[dict]) -> str:
     )
 
 
+_BEST_MEMBERSHIP: dict[str, list[tuple[str, str]]] | None = None
+
+
+def best_membership(all_skills: list[dict]) -> dict[str, list[tuple[str, str]]]:
+    """skill slug -> [(best topic slug, label)] for every /best/ guide that lists it. Built once."""
+    global _BEST_MEMBERSHIP
+    if _BEST_MEMBERSHIP is None:
+        _BEST_MEMBERSHIP = {}
+        for topic, label, items in best_pages(all_skills):
+            for it in items:
+                _BEST_MEMBERSHIP.setdefault(it["slug"], []).append((topic, label))
+    return _BEST_MEMBERSHIP
+
+
+def best_links_html(s: dict, all_skills: list[dict]) -> str:
+    """Internal links from a skill page up to the /best/ guides it appears in."""
+    topics = best_membership(all_skills).get(s["slug"]) or []
+    if not topics:
+        return ""
+    links = " · ".join(
+        f'<a href="/best/{t}/">Best Claude Code skills for {esc(label)}</a>' for t, label in topics[:4]
+    )
+    return f'<p class="featured">Featured in: {links}</p>'
+
 def render_skill(s: dict, all_skills: list[dict]) -> str:
     related = [
         x for x in sorted(all_skills, key=lambda y: -(y.get("stars") or 0))
@@ -364,6 +390,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 </div>
 <h1>{esc(s['name'])} <span style="font-weight:400;opacity:.6">· Claude Code skill</span></h1>
 <p class="short">{esc(s.get('short_description', ''))}</p>
+{best_links_html(s, all_skills)}
 {X.glance_html(s)}
 
 {long_html(s)}
@@ -906,7 +933,7 @@ BEST_TOPICS = [
     ("refactoring", "Refactoring", r"refactor|clean.?up|rewrite|modernize|migrat"),
     ("api", "APIs & Backend", r"\bapi\b|\brest\b|graphql|endpoint|openapi|swagger"),
     ("database", "Databases", r"database|\bdb\b|\bsql\b|postgres|mysql|mongodb|redis|supabase|prisma"),
-    ("beginners", "Beginner-Friendly", r"beginner|getting.started|from.scratch|newbie|first.steps|for.beginners"),
+    ("beginners", "Beginners", r"beginner|getting.started|from.scratch|newbie|first.steps|for.beginners"),
     ("mobile", "Mobile (iOS & Android)", r"\bios\b|\bandroid\b|react.native|flutter|swift|kotlin|\bmobile\b"),
     ("ai-ml", "AI & Machine Learning", r"machine.learning|\bllm\b|\bembedding\b|\bvector\b|\brag\b|\bprompt\b"),
 ]
@@ -943,7 +970,7 @@ def best_pages(skills: list[dict], min_items: int = 5, top: int = 20) -> list[tu
 
 def render_best(slug: str, label: str, items: list[dict]) -> str:
     year = datetime.now().year
-    title = f"Best {label} Claude Code Skills ({year})"
+    title = f"{len(items)} Best Claude Code Skills for {label} ({year})"
     desc = (f"The top {len(items)} open-source Claude Code skills for {label}, ranked by relevance, then GitHub stars, "
             f"with what each one does and a one-line install command.")
     rows = []
