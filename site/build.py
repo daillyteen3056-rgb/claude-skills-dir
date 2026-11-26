@@ -28,7 +28,7 @@ ROOT = Path(__file__).parent
 PROJECT = ROOT.parent
 DATA = PROJECT / "data" / "skills.json"
 OUT = ROOT / "dist"
-MIN_TAG_INDEX = 3  # tags with fewer skills get noindex + stay out of sitemap
+MIN_TAG_INDEX = 8  # tags with fewer skills get noindex + stay out of sitemap (3 left ~280 thin tag pages)
 
 SITE_NAME = os.environ.get("SITE_NAME", "SkillNest")
 SITE_URL = os.environ.get("SITE_URL", "https://skillnest.dev").rstrip("/")
@@ -758,17 +758,52 @@ def faq_block(s: dict, cmd: str) -> tuple[str, str]:
     return html_block, f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
 
 
-def compare_pairs(skills: list[dict], per_cat: int = 5, limit: int = 120) -> list[tuple[dict, dict]]:
-    by_cat: dict[str, list[dict]] = {}
-    for s in skills:
-        by_cat.setdefault(s.get("category", "other"), []).append(s)
+GENERIC_TAGS = {
+    "claude-code", "claude-skills", "agent-skills", "claude", "codex", "ai", "skills", "skill",
+    "claude-skill", "agent-skill", "ai-agents", "agents", "llm", "anthropic", "cursor", "gemini-cli",
+    "mcp", "claude-ai", "ai-tools", "automation", "productivity", "developer-tools", "agentic-ai",
+    "openai", "claude-code-skills", "claude-code-skill", "gemini", "copilot", "opencode", "windsurf",
+    "vibe-coding", "ai-agent", "agent", "prompt-engineering",
+}
+
+
+def compare_pairs(skills: list[dict], per_skill: int = 3, limit: int = 60,
+                  min_shared: int = 2, min_stars: int = 50) -> list[tuple[dict, dict]]:
+    """Pair skills that are real alternatives to each other.
+
+    Two skills are paired only when they share at least `min_shared` specific tags
+    (generic tags such as "claude-code" do not count). More overlap and more combined
+    stars rank first, and each skill appears in at most `per_skill` pairs so a few
+    popular skills do not dominate. Unrelated top-of-category pairs (the old
+    behaviour) produced thin pages nobody searches for, so they are no longer built.
+    """
+    def spec(s: dict) -> set[str]:
+        return {t.lower() for t in (s.get("tags") or [])} - GENERIC_TAGS
+
+    pool = [s for s in skills
+            if s.get("category", "other") != "other" and (s.get("stars") or 0) >= min_stars]
+    tagsets = [spec(s) for s in pool]
+    cands = []
+    for i in range(len(pool)):
+        for j in range(i + 1, len(pool)):
+            shared = len(tagsets[i] & tagsets[j])
+            if shared >= min_shared:
+                stars = (pool[i].get("stars") or 0) + (pool[j].get("stars") or 0)
+                cands.append((shared, stars, i, j))
+    cands.sort(key=lambda c: (-c[0], -c[1]))
+
+    used: dict[str, int] = {}
     pairs: list[tuple[dict, dict]] = []
-    for cat, items in sorted(by_cat.items()):
-        if cat == "other":
+    for _, _, i, j in cands:
+        a, b = pool[i], pool[j]
+        if used.get(a["slug"], 0) >= per_skill or used.get(b["slug"], 0) >= per_skill:
             continue
-        top = sorted(items, key=lambda x: -(x.get("stars") or 0))[:per_cat]
-        pairs.extend(itertools.combinations(top, 2))
-    return pairs[:limit]
+        pairs.append((a, b))
+        used[a["slug"]] = used.get(a["slug"], 0) + 1
+        used[b["slug"]] = used.get(b["slug"], 0) + 1
+        if len(pairs) >= limit:
+            break
+    return pairs
 
 
 # --- SEO round 2 ---------------------------------------------------------------
