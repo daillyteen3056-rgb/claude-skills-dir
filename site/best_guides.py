@@ -258,4 +258,13 @@ BEST_GUIDES = {
         ["Add a cache layer in front of my LLM calls with a safe key based on the prompt and model",
          "Set up an eval harness for this prompt and run my two candidate versions on 50 saved examples"],
     ),
+    "humanizer": (
+        "Humanizer skills rewrite AI-generated text so it reads like a person wrote it: they cut the stock phrases, "
+        "vary sentence length, drop the reflexive lists of three and the hedging that marks machine prose. "
+        "Several are language-specific (Chinese, Russian, German, Indonesian), and some target a register such as academic writing. "
+        "Use them to edit your own drafts into your voice, not to pass detection on work you are required to write yourself. "
+        "Always reread the result: a humanizer can change meaning when it rephrases technical or factual claims.",
+        ["Rewrite this blog post so it sounds like me: shorter sentences, no filler, keep every fact",
+         "Edit this abstract to remove AI-sounding phrasing without changing any of the claims"],
+    ),
 }
