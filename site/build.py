@@ -849,7 +849,7 @@ def faq_block(s: dict, cmd: str) -> tuple[str, str]:
         (f"How do I install {name} in Claude Code?",
          f"Clone it into your personal skills folder: {cmd.replace(chr(10), ' && ')} — Claude Code picks it up automatically."),
         (f"How do I install {name} globally in Claude Code?",
-         f"Drop the skill folder into ~/.claude/skills/{s['slug']}/ instead of a project-local .claude/skills/. Globally installed skills are available in every Claude Code session, on any project, without needing to copy the skill into each repo. Run `/skills` to verify it loaded."),
+         f"Drop the skill folder into ~/.claude/skills/{s['slug']}/ instead of a project-local .claude/skills/. Globally installed skills are available in every Claude Code session, on any project, without needing to copy the skill into each repo. To check it loaded, type / in Claude Code: the skill appears in the slash-command menu under its folder name."),
         (f"Is {name} free?",
          f"{name} is open source on GitHub ({stars:,} stars at last check) and published by {author}."),
         (f"What are alternatives to {name}?",
