@@ -454,6 +454,7 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
     cat_nav = ""
     cat_sort_bar = ""
     cat_sort_js = ""
+    cur_cat = ""
     if canonical.startswith("/category/"):
         cur_cat = canonical.strip("/").split("/", 1)[-1]
         cat_nav = f'<div class="breadcrumb" style="margin-bottom:14px"><a href="/">Home</a> › <a href="/#categories">Categories</a> › <span>{esc(cur_cat.replace("-", " ").title())}</span></div>'
