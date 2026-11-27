@@ -468,10 +468,11 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
         cur_cat = canonical.strip("/").split("/", 1)[-1]
         cat_nav = f'<div class="breadcrumb" style="margin-bottom:14px"><a href="/">Home</a> › <a href="/#categories">Categories</a> › <span>{esc(cur_cat.replace("-", " ").title())}</span></div>'
         cat_sort_bar = (
-            '<div id="catSortBar" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:var(--muted)">'
+            '<div id="catSortBar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--muted)">'
             '<span>Sort:</span>'
             '<button type="button" data-catsort="stars" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:rgba(167,139,250,.2);color:inherit;cursor:pointer">Stars</button>'
             '<button type="button" data-catsort="commit" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Last commit</button>'
+            '<button type="button" id="catScriptsToggle" aria-pressed="false" style="margin-left:6px;padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Has scripts only</button>'
             '</div>'
         )
         rows_data = [
@@ -484,6 +485,8 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
                 "author": x.get("author") or "",
                 "featured": bool(x.get("featured")),
                 "install": install_cmd(x),
+                "repo_url": x.get("repo_url") or "",
+                "has_scripts": bool((x.get("meta") or {}).get("has_scripts")),
                 "commit_date": str((x.get("meta") or {}).get("pushed_at") or x.get("updated_at") or ""),
             }
             for x in sorted(skills, key=lambda y: -(y.get("stars") or 0))
@@ -496,21 +499,27 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
             'if(!bar||!grid||!el)return;'
             'var items=JSON.parse(el.textContent||"[]");'
             'var q=String.fromCharCode(34);'
-            'var btnSt="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer";'
+            'var curMode="stars",onlyScripts=false;'
+            'var tgl=document.getElementById("catScriptsToggle");'
+            'var btnSt="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer";'
             'function e(v){return String(v||"").split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split(q).join("&quot;");}'
             'function f(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+"k":String(n);}'
-            'function render(mode){'
-            'var arr=items.slice();'
-            'if(mode==="commit"){arr.sort(function(a,b){var da=a.commit_date||"",db=b.commit_date||"";if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});}'
+            'function render(){'
+            'if(arguments.length&&typeof arguments[0]==="string")curMode=arguments[0];'
+            'var arr=items.filter(function(s){return !onlyScripts||!!s.has_scripts;});'
+            'if(curMode==="commit"){arr.sort(function(a,b){var da=a.commit_date||"",db=b.commit_date||"";if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});}'
             'else{arr.sort(function(a,b){return (b.stars||0)-(a.stars||0);});}'
             'grid.innerHTML=arr.map(function(s){'
             'var feat=s.featured?"<span class="+q+"chip featured"+q+">&#9733; Featured</span>":"";'
-            'var d=(mode==="commit"&&s.commit_date)?"<span>"+e(s.commit_date.slice(0,10))+"</span>":"";'
-            'return "<article class="+q+"card"+q+"><h3><a href="+q+"/skills/"+e(s.slug)+"/"+q+">"+e(s.name)+"</a></h3><p>"+e(s.short_description)+"</p><div class="+q+"meta"+q+"><span class="+q+"chip"+q+">"+e(s.category)+"</span><span>"+f(s.stars)+" &#9733;</span><span>by "+e(s.author)+"</span>"+feat+d+"</div><button type="+q+"button"+q+" data-cmd="+q+e(s.install)+q+" style="+q+btnSt+q+">Copy install command</button></article>";'
+            'var scr=s.has_scripts?"<span class="+q+"chip"+q+">has scripts</span>":"";'
+            'var d=(curMode==="commit"&&s.commit_date)?"<span>"+e(s.commit_date.slice(0,10))+"</span>":"";'
+            'var gh=s.repo_url?"<a href="+q+e(s.repo_url)+q+" rel="+q+"noopener"+q+" style="+q+"margin-left:8px;font-size:12px;opacity:.85"+q+">GitHub &rarr;</a>":"";'
+            'return "<article class="+q+"card"+q+"><h3><a href="+q+"/skills/"+e(s.slug)+"/"+q+">"+e(s.name)+"</a></h3><p>"+e(s.short_description)+"</p><div class="+q+"meta"+q+"><span class="+q+"chip"+q+">"+e(s.category)+"</span><span>"+f(s.stars)+" &#9733;</span><span>by "+e(s.author)+"</span>"+feat+scr+d+"</div><div style="+q+"margin-top:10px;display:flex;align-items:center;flex-wrap:wrap;gap:4px"+q+"><button type="+q+"button"+q+" data-cmd="+q+e(s.install)+q+" style="+q+btnSt+q+">Copy install command</button>"+gh+"</div></article>";'
             '}).join("");'
-            'bar.querySelectorAll("button[data-catsort]").forEach(function(b){b.style.background=b.getAttribute("data-catsort")===mode?"rgba(167,139,250,.2)":"transparent";});'
+            'bar.querySelectorAll("button[data-catsort]").forEach(function(b){b.style.background=b.getAttribute("data-catsort")===curMode?"rgba(167,139,250,.2)":"transparent";});'
+            'if(tgl){tgl.setAttribute("aria-pressed",onlyScripts?"true":"false");tgl.style.background=onlyScripts?"rgba(167,139,250,.2)":"transparent";}'
             '}'
-            'bar.addEventListener("click",function(ev){var b=ev.target.closest&&ev.target.closest("button[data-catsort]");if(!b)return;render(b.getAttribute("data-catsort"));});'
+            'bar.addEventListener("click",function(ev){var b=ev.target.closest&&ev.target.closest("button[data-catsort]");if(b){render(b.getAttribute("data-catsort"));return;}var t=ev.target.closest&&ev.target.closest("#catScriptsToggle");if(t){onlyScripts=!onlyScripts;render();}});'
             '})();</script>'
         )
     body = f"""<div class="wrap">
@@ -1036,14 +1045,14 @@ def website_jsonld() -> str:
     return f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
 
 
-SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Search skills by name, tag or use case…" aria-label="Search skills" autocomplete="off"></div>
+SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Search skills by name, tag or use case…" aria-label="Search skills" autocomplete="off"><button type="button" id="qScripts" aria-pressed="false" style="padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--fg);font-size:13px;cursor:pointer;white-space:nowrap">Has scripts</button></div>
 <div id="results" class="grid" style="margin-top:16px"></div>
 <script>
 (function(){
   var q=document.getElementById('q'),out=document.getElementById('results'),data=null;
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function fmtStars(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}
-  function card(s){return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+fmtStars(s.stars)+' \\u2605</span><span>by '+esc(s.author)+'</span></div><button type="button" data-cmd="'+esc(s.install||'')+'" style="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button></article>';}
+  function card(s){var scr=hasScr(s)?'<span class="chip">has scripts</span>':'';var gh=s.repo_url?'<a href="'+esc(s.repo_url)+'" rel="noopener" style="margin-left:8px;font-size:12px;opacity:.85">GitHub &rarr;</a>':'';return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+fmtStars(s.stars)+' \u2605</span><span>by '+esc(s.author)+'</span>'+scr+'</div><div style="margin-top:10px;display:flex;align-items:center;flex-wrap:wrap;gap:4px"><button type="button" data-cmd="'+esc(s.install||'')+'" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button>'+gh+'</div></article>';}
   var sortMode='stars';
   function commitDate(s){return String(s.pushed_at||s.updated_at||'');}
   function run(){
@@ -1065,6 +1074,7 @@ SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Se
   }
   function load(cb){if(data)return cb();fetch('/data/skills.json').then(function(r){return r.json();}).then(function(d){data=d;cb();});}
   q.addEventListener('input',function(){load(run);});
+  if(qs){qs.addEventListener('click',function(){onlyScripts=!onlyScripts;load(run);});}
   var p=new URLSearchParams(location.search).get('q');
   if(p){q.value=p;load(run);}
 })();
