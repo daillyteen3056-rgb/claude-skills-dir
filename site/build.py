@@ -452,18 +452,58 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 def render_listing(title: str, description: str, skills: list[dict], canonical: str) -> str:
     cards = "\n".join(skill_card(s) for s in sorted(skills, key=lambda x: -(x.get("stars") or 0))) or "<p>No skills in this group yet.</p>"
     cat_nav = ""
+    cat_sort_bar = ""
+    cat_sort_js = ""
     if canonical.startswith("/category/"):
         cur_cat = canonical.strip("/").split("/", 1)[-1]
         cat_nav = f'<div class="breadcrumb" style="margin-bottom:14px"><a href="/">Home</a> › <a href="/#categories">Categories</a> › <span>{esc(cur_cat.replace("-", " ").title())}</span></div>'
+        cat_sort_bar = '<div id="catSortBar" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:var(--muted)"><span>Sort:</span><button type="button" data-catsort="stars" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:rgba(167,139,250,.2);color:inherit;cursor:pointer">Stars</button><button type="button" data-catsort="commit" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Last commit</button></div>'
+        rows_data = []
+        for x in sorted(skills, key=lambda y: -(y.get("stars") or 0)):
+            m = x.get("meta") or {}
+            rows_data.append({
+                "slug": x["slug"],
+                "name": x.get("name") or x["slug"],
+                "short_description": x.get("short_description") or "",
+                "category": x.get("category") or "other",
+                "stars": x.get("stars") or 0,
+                "author": x.get("author") or "",
+                "featured": bool(x.get("featured")),
+                "install": install_cmd(x),
+                "commit_date": str(m.get("pushed_at") or x.get("updated_at") or ""),
+            })
+        payload = json.dumps(rows_data, ensure_ascii=False).replace("</", "<\/")
+        cat_sort_js = (
+            "<script>(function(){var bar=document.getElementById('catSortBar');if(!bar)return;"
+            "var grid=document.querySelector('section .grid');if(!grid)return;"
+            "var items=" + payload + ";"
+            "function e(s){return String(s||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}"
+            "function f(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}"
+            "function render(mode){"
+            "var arr=items.slice();"
+            "if(mode==='commit'){arr.sort(function(a,b){var da=a.commit_date||'',db=b.commit_date||'';if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});}"
+            "else{arr.sort(function(a,b){return (b.stars||0)-(a.stars||0);});}"
+            "grid.innerHTML=arr.map(function(s){"
+            "var feat=s.featured?'<span class="chip featured">★ Featured</span>':'';"
+            "var d=mode==='commit'&&s.commit_date?'<span>'+e(s.commit_date.slice(0,10))+'</span>':'';"
+            "return '<article class="card"><h3><a href="/skills/'+e(s.slug)+'/">'+e(s.name)+'</a></h3><p>'+e(s.short_description)+'</p><div class="meta"><span class="chip">'+e(s.category)+'</span><span>'+f(s.stars)+' ★</span><span>by '+e(s.author)+'</span>'+feat+d+'</div><button type="button" data-cmd="'+e(s.install)+'" style="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button></article>';"
+            "}).join('');"
+            "bar.querySelectorAll('button[data-catsort]').forEach(function(b){b.style.background=b.getAttribute('data-catsort')===mode?'rgba(167,139,250,.2)':'transparent';});"
+            "}"
+            "bar.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('button[data-catsort]');if(!b)return;render(b.getAttribute('data-catsort'));});"
+            "})();</script>"
+        )
     body = f"""<div class="wrap">
 <section class="hero" style="padding:50px 0 30px">
 {cat_nav}
 <h1>{esc(title)}</h1>
 <p>{esc(description)}</p>
+{cat_sort_bar}
 </section>
 <section>
 <div class="grid">{cards}</div>
 </section>
+{cat_sort_js}
 </div>"""
     ranked = sorted(skills, key=lambda x: -(x.get("stars") or 0))[:50]
     item_list = {
