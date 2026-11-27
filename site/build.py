@@ -512,6 +512,7 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
 </section>
 <section>
 <div class="grid">{cards}</div>
+{make_affiliate_box("category") if cur_cat in ("automation", "integrations") else ""}
 </section>
 {cat_sort_js}
 </div>"""
@@ -1307,6 +1308,27 @@ BLOG_POSTS = [
 ]
 
 
+
+def make_affiliate_box(source: str) -> str:
+    url = f"https://www.make.com/en/register?pc=skillnest&affiliateSource={esc(source)}"
+    if source == "blog":
+        body_txt = (
+            "Connecting Claude Code skills with external webhooks, Slack, Notion, or scheduled triggers? "
+            f'Wire up multi-app workflows visually with <a href="{url}" target="_blank" rel="sponsored noopener">Make (free plan available) &rarr;</a>.'
+        )
+    else:
+        body_txt = (
+            "Need visual API &amp; webhook orchestration beyond local scripts? "
+            f'Pair these skills with <a href="{url}" target="_blank" rel="sponsored noopener">Make &rarr;</a> to automate multi-app workflows without boilerplate servers.'
+        )
+    return (
+        '<aside style="margin-top:24px;padding:14px 16px;border:1px solid #22222d;border-radius:10px;background:#111118;font-size:14px;color:var(--muted)">'
+        '<div style="font-size:12px;margin-bottom:6px"><strong style="color:#fff">Workflow tip</strong> &middot; <span>Affiliate link</span></div>'
+        f'<p style="margin:0;color:var(--fg)">{body_txt}</p>'
+        '</aside>'
+    )
+
+
 def render_post(p: dict) -> str:
     url = f"/blog/{p['slug']}/"
     body = f"""<div class="wrap">
@@ -1316,6 +1338,7 @@ def render_post(p: dict) -> str:
 <p class="short">{esc(p['description'])}</p>
 <p style="color:var(--muted);font-size:14px;margin-bottom:28px">{SITE_NAME} · <time datetime="{p['date']}">{p['date']}</time></p>
 <article class="long">{p['html']}</article>
+{make_affiliate_box("blog")}
 </div>
 </div>"""
     ld = {"@context": "https://schema.org", "@type": "BlogPosting", "headline": p["title"],
