@@ -435,6 +435,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 <div class="row"><span>Updated</span><span>{esc(s.get('updated_at', ''))}</span></div>
 {X.sidebar_rows(s)}
 <a class="cta" href="{esc(s.get('repo_url', '#'))}" rel="noopener">View on GitHub →</a>
+<p style="margin-top:8px;font-size:12px;color:var(--muted)"><a href="{esc(s.get('repo_url', '#'))}" rel="noopener">Inspect directory &amp; files</a> before installing.</p>
 {sidebar_promo(s)}
 </aside>
 </div>
