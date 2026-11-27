@@ -987,7 +987,7 @@ SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Se
   function run(){
     var v=q.value.trim().toLowerCase();
     if(!v){out.innerHTML='';return;}
-    var terms=v.split(/\s+/);
+    var terms=v.split(/\\s+/);
     var hits=data.filter(function(s){var t=[s.name,s.slug,s.short_description,(s.tags||[]).join(' '),s.category].join(' ').toLowerCase();return terms.every(function(w){return t.indexOf(w)>-1;});});
     if(sortMode==='commit'){
       hits.sort(function(a,b){var da=commitDate(a),db=commitDate(b);if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});
