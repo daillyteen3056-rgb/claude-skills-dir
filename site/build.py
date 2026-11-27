@@ -190,7 +190,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-NV5B9DJX"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+  function gtag(){{dataLayer.push(arguments);}}
   gtag('js', new Date());
 </script>
 </head>
@@ -722,7 +722,7 @@ NOT_FOUND = """<!doctype html>
 <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-NV5B9DJX"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+  function gtag(){{dataLayer.push(arguments);}}
   gtag('js', new Date());
 </script>
 </head><body><div class="b"><h1>404</h1><h2>Skill not found</h2>
@@ -1780,4 +1780,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 
