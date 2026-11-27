@@ -478,7 +478,7 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
                 "install": install_cmd(x),
                 "commit_date": str(m.get("pushed_at") or x.get("updated_at") or ""),
             })
-        payload = json.dumps(rows_data, ensure_ascii=False).replace("</", "<\/")
+        payload = json.dumps(rows_data, ensure_ascii=False).replace("</", "<\\/")
         cat_sort_js = (
             "<script>(function(){"
             "var bar=document.getElementById('catSortBar');"
