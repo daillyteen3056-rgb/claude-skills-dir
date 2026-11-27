@@ -464,10 +464,8 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
             '<button type="button" data-catsort="commit" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Last commit</button>'
             '</div>'
         )
-        rows_data = []
-        for x in sorted(skills, key=lambda y: -(y.get("stars") or 0)):
-            m = x.get("meta") or {}
-            rows_data.append({
+        rows_data = [
+            {
                 "slug": x["slug"],
                 "name": x.get("name") or x["slug"],
                 "short_description": x.get("short_description") or "",
@@ -476,244 +474,34 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
                 "author": x.get("author") or "",
                 "featured": bool(x.get("featured")),
                 "install": install_cmd(x),
-                "commit_date": str(m.get("pushed_at") or x.get("updated_at") or ""),
-            })
-        payload = json.dumps(rows_data, ensure_ascii=False).replace("</", "<\\u002f")
+                "commit_date": str((x.get("meta") or {}).get("pushed_at") or x.get("updated_at") or ""),
+            }
+            for x in sorted(skills, key=lambda y: -(y.get("stars") or 0))
+        ]
+        safe_json = json.dumps(rows_data, ensure_ascii=False).replace("<", "\u003c")
         cat_sort_js = (
-            "<script>(function(){"
-            "var bar=document.getElementById('catSortBar');"
-            "var grid=document.querySelector('section .grid');"
-            "if(!bar||!grid)return;"
-            "var items=" + payload + ";"
-            "var btnStyle='margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer';"
-            "function e(v){return String(v||'').split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split(String.fromCharCode(34)).join('&quot;');}"
-            "function f(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}"
-            "function render(mode){"
-            "var arr=items.slice();"
-            "if(mode==='commit'){arr.sort(function(a,b){var da=a.commit_date||'',db=b.commit_date||'';if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});}"
-            "else{arr.sort(function(a,b){return (b.stars||0)-(a.stars||0);});}"
-            "grid.innerHTML=arr.map(function(s){"
-            "var feat=s.featured?'<span class=\"chip featured\">★ Featured</span>':'';"
-            "var d=mode==='commit'&&s.commit_date?'<span>'+e(s.commit_date.slice(0,10))+'</span>':'';"
-            "return '<article class=\"card\"><h3><a href=\"/skills/'+e(s.slug)+'/\">'+e(s.name)+'</a></h3><p>'+e(s.short_description)+'</p><div class=\"meta\"><span class=\"chip\">'+e(s.category)+'</span><span>'+f(s.stars)+' ★</span><span>by '+e(s.author)+'</span>'+feat+d+'</div><button type=\"button\" data-cmd=\"'+e(s.install)+'\" style=\"'+btnStyle+'\">Copy install command</button></article>';"
-            "}).join('');"
-            "bar.querySelectorAll('button[data-catsort]').forEach(function(b){b.style.background=b.getAttribute('data-catsort')===mode?'rgba(167,139,250,.2)':'transparent';});"
-            "}"
-            "bar.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('button[data-catsort]');if(!b)return;render(b.getAttribute('data-catsort'));});"
-            "})();</script>"
-        )
-    body = f"""<div class="wrap">
-<section class="hero">
-<h1>Every Claude Code skill,<br><span>one search away.</span></h1>
-{SEARCH_HTML}
-<p>{esc(SITE_DESC)}</p>
-<div class="stats">
-<div><b>{len(skills)}</b>skills indexed</div>
-<div><b>{len(categories)}</b>categories</div>
-<div><b>{len(tags)}</b>tags</div>
-</div>
-</section>
-
-<section>
-<h2>Featured</h2>
-<div class="grid">{featured_html}</div>
-</section>
-
-{promo_block_full()}
-
-{new_home(skills)}
-
-<section>
-<h2>From the blog</h2>
-<div class="tag-cloud">{blog_cloud()}</div>
-</section>
-
-<section>
-<h2>Guides</h2>
-<div class="tag-cloud">{guides_cloud(skills)}</div>
-</section>
-
-<section id="categories">
-<h2>Categories</h2>
-<div class="tag-cloud">{cats_html}</div>
-</section>
-
-<section>
-<h2>More popular skills <span style="font-size:15px;color:var(--muted);font-weight:400">30 more of {len(skills)} · <a href="#categories">browse all by category</a></span></h2>
-<div class="grid">{all_html}</div>
-</section>
-
-<section>
-<h2>Popular tags</h2>
-<div class="tag-cloud">{tags_html}</div>
-</section>
-</div>"""
-    return layout(
-        title=f"Claude Code Skills Directory: Search & Install {len(skills)} Skills | {SITE_NAME}",
-        description=SITE_DESC,
-        body=body,
-        canonical="/",
-        extra_head=website_jsonld(),
-    )
-
-
-_BEST_MEMBERSHIP: dict[str, list[tuple[str, str]]] | None = None
-
-
-def best_membership(all_skills: list[dict]) -> dict[str, list[tuple[str, str]]]:
-    """skill slug -> [(best topic slug, label)] for every /best/ guide that lists it. Built once."""
-    global _BEST_MEMBERSHIP
-    if _BEST_MEMBERSHIP is None:
-        _BEST_MEMBERSHIP = {}
-        for topic, label, items in best_pages(all_skills):
-            for it in items:
-                _BEST_MEMBERSHIP.setdefault(it["slug"], []).append((topic, label))
-    return _BEST_MEMBERSHIP
-
-
-def best_links_html(s: dict, all_skills: list[dict]) -> str:
-    """Internal links from a skill page up to the /best/ guides it appears in."""
-    topics = best_membership(all_skills).get(s["slug"]) or []
-    if not topics:
-        return ""
-    links = " · ".join(
-        f'<a href="/best/{t}/">Best Claude Code skills for {esc(label)}</a>' for t, label in topics[:4]
-    )
-    return f'<p class="featured">Featured in: {links}</p>'
-
-def render_skill(s: dict, all_skills: list[dict]) -> str:
-    related = [
-        x for x in sorted(all_skills, key=lambda y: -(y.get("stars") or 0))
-        if x["slug"] != s["slug"] and x.get("category") == s.get("category")
-    ][:3]
-    related_html = "\n".join(skill_card(r) for r in related) or "<p>No related skills.</p>"
-
-    triggers = s.get("triggers") or []
-    triggers_html = (
-        "<ul>" + "".join(f"<li><code>{esc(t)}</code></li>" for t in triggers) + "</ul>"
-        if triggers else "<p>No specific triggers listed.</p>"
-    )
-
-    cmd = install_cmd(s)
-    install_block = (
-        X.install_html(s, cmd)
-        + "<p>On Windows? Follow the <a href='/blog/install-claude-code-skills-windows/'>Windows install guide</a>. Using several agents? See <a href='/blog/install-agent-skills-cursor-codex-claude-code/'>3 ways to install a skill</a>. New to skills? Read the <a href='/blog/claude-code-skills-beginners-guide/'>beginner's guide</a>.</p>"
-        "<p>Skill not loading? Check <a href='/blog/claude-code-skill-not-loading/'>10 common causes</a> or <a href='/tools/skill-md-validator/'>validate your SKILL.md</a>.</p>"
-    )
-    faq, faq_jsonld = faq_block(s, cmd)
-
-    jsonld = jsonld_software_app(s) + faq_jsonld + breadcrumb_jsonld(s)
-    body = f"""<div class="wrap">
-<div class="detail">
-<main>
-<div class="breadcrumb">
-<a href="/">Home</a> › <a href="/category/{esc(s.get('category', 'other'))}/">{esc(s.get('category', 'other').replace('-', ' ').title())}</a> › {esc(s['name'])}
-</div>
-<h1>{esc(s['name'])} <span style="font-weight:400;opacity:.6">· Claude Code skill</span></h1>
-<p class="short">{esc(s.get('short_description', ''))}</p>
-{best_links_html(s, all_skills)}
-{X.glance_html(s)}
-
-{long_html(s)}
-
-<div class="section-h">Install</div>
-{install_block}
-
-{X.skillmd_html(s)}
-
-<div class="section-h">When it triggers</div>
-{X.triggers_html(s, triggers_html)}
-
-<div class="section-h">Tags</div>
-<div class="tag-cloud">
-{''.join(tag_link(t, all_skills) for t in (s.get('tags') or []))}
-</div>
-
-{faq}
-
-{X.badge_box(s, SITE_URL)}
-
-<div class="related">
-<h2>Related skills</h2>
-<div class="grid">{related_html}</div>
-</div>
-</main>
-
-<aside class="sidebar">
-<div class="row"><span>Author</span><span><a href="{esc(s.get('author_url', '#'))}">{esc(s['author'])}</a></span></div>
-<div class="row"><span>Category</span><span>{esc(s.get('category', 'other'))}</span></div>
-<div class="row"><span>Difficulty</span><span>{esc(s.get('difficulty', 'beginner'))}</span></div>
-<div class="row"><span>Price</span><span>{esc(s.get('price', 'free'))}</span></div>
-<div class="row"><span>Stars</span><span>{format(s.get('stars') or 0, ',')}</span></div>
-<div class="row"><span>Updated</span><span>{esc(s.get('updated_at', ''))}</span></div>
-{X.sidebar_rows(s)}
-<a class="cta" href="{esc(s.get('repo_url', '#'))}" rel="noopener">View on GitHub →</a>
-<p style="margin-top:8px;font-size:12px;color:var(--muted)"><a href="{esc(s.get('repo_url', '#'))}" rel="noopener">Inspect directory &amp; files</a> before installing.</p>
-{sidebar_promo(s)}
-</aside>
-</div>
-</div>"""
-    return layout(
-        title=skill_title(s),
-        description=f"{s.get('short_description', '').rstrip('.')}. By {s.get('author') or 'its author'} on GitHub, {fmt_stars(s.get('stars'))} stars. Install command, FAQ and alternatives.",
-        body=body,
-        canonical=f"/skills/{s['slug']}/",
-        extra_head=jsonld,
-    )
-
-
-def render_listing(title: str, description: str, skills: list[dict], canonical: str) -> str:
-    cards = "\n".join(skill_card(s) for s in sorted(skills, key=lambda x: -(x.get("stars") or 0))) or "<p>No skills in this group yet.</p>"
-    cat_nav = ""
-    cat_sort_bar = ""
-    cat_sort_js = ""
-    if canonical.startswith("/category/"):
-        cur_cat = canonical.strip("/").split("/", 1)[-1]
-        cat_nav = f'<div class="breadcrumb" style="margin-bottom:14px"><a href="/">Home</a> › <a href="/#categories">Categories</a> › <span>{esc(cur_cat.replace("-", " ").title())}</span></div>'
-        cat_sort_bar = (
-            '<div id="catSortBar" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:var(--muted)">'
-            '<span>Sort:</span>'
-            '<button type="button" data-catsort="stars" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:rgba(167,139,250,.2);color:inherit;cursor:pointer">Stars</button>'
-            '<button type="button" data-catsort="commit" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Last commit</button>'
-            '</div>'
-        )
-        rows_data = []
-        for x in sorted(skills, key=lambda y: -(y.get("stars") or 0)):
-            m = x.get("meta") or {}
-            rows_data.append({
-                "slug": x["slug"],
-                "name": x.get("name") or x["slug"],
-                "short_description": x.get("short_description") or "",
-                "category": x.get("category") or "other",
-                "stars": x.get("stars") or 0,
-                "author": x.get("author") or "",
-                "featured": bool(x.get("featured")),
-                "install": install_cmd(x),
-                "commit_date": str(m.get("pushed_at") or x.get("updated_at") or ""),
-            })
-        payload = json.dumps(rows_data, ensure_ascii=False).replace("</", "<\\/")
-        cat_sort_js = (
-            "<script>(function(){"
-            "var bar=document.getElementById('catSortBar');"
-            "var grid=document.querySelector('section .grid');"
-            "if(!bar||!grid)return;"
-            "var items=" + payload + ";"
-            "var btnStyle='margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer';"
-            "function e(v){return String(v||'').split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split(String.fromCharCode(34)).join('&quot;');}"
-            "function f(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}"
-            "function render(mode){"
-            "var arr=items.slice();"
-            "if(mode==='commit'){arr.sort(function(a,b){var da=a.commit_date||'',db=b.commit_date||'';if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});}"
-            "else{arr.sort(function(a,b){return (b.stars||0)-(a.stars||0);});}"
-            "grid.innerHTML=arr.map(function(s){"
-            "var feat=s.featured?'<span class="chip featured">★ Featured</span>':'';"
-            "var d=mode==='commit'&&s.commit_date?'<span>'+e(s.commit_date.slice(0,10))+'</span>':'';"
-            "return '<article class="card"><h3><a href="/skills/'+e(s.slug)+'/">'+e(s.name)+'</a></h3><p>'+e(s.short_description)+'</p><div class="meta"><span class="chip">'+e(s.category)+'</span><span>'+f(s.stars)+' ★</span><span>by '+e(s.author)+'</span>'+feat+d+'</div><button type="button" data-cmd="'+e(s.install)+'" style="'+btnStyle+'">Copy install command</button></article>';"
-            "}).join('');"
-            "bar.querySelectorAll('button[data-catsort]').forEach(function(b){b.style.background=b.getAttribute('data-catsort')===mode?'rgba(167,139,250,.2)':'transparent';});"
-            "}"
-            "bar.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('button[data-catsort]');if(!b)return;render(b.getAttribute('data-catsort'));});"
-            "})();</script>"
+            '<script id="catSortData" type="application/json">' + safe_json + '</script>'
+            '<script>(function(){'
+            'var bar=document.getElementById("catSortBar"),grid=document.querySelector("section .grid"),el=document.getElementById("catSortData");'
+            'if(!bar||!grid||!el)return;'
+            'var items=JSON.parse(el.textContent||"[]");'
+            'var q=String.fromCharCode(34);'
+            'var btnSt="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer";'
+            'function e(v){return String(v||"").split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split(q).join("&quot;");}'
+            'function f(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+"k":String(n);}'
+            'function render(mode){'
+            'var arr=items.slice();'
+            'if(mode==="commit"){arr.sort(function(a,b){var da=a.commit_date||"",db=b.commit_date||"";if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});}'
+            'else{arr.sort(function(a,b){return (b.stars||0)-(a.stars||0);});}'
+            'grid.innerHTML=arr.map(function(s){'
+            'var feat=s.featured?"<span class="+q+"chip featured"+q+">&#9733; Featured</span>":"";'
+            'var d=(mode==="commit"&&s.commit_date)?"<span>"+e(s.commit_date.slice(0,10))+"</span>":"";'
+            'return "<article class="+q+"card"+q+"><h3><a href="+q+"/skills/"+e(s.slug)+"/"+q+">"+e(s.name)+"</a></h3><p>"+e(s.short_description)+"</p><div class="+q+"meta"+q+"><span class="+q+"chip"+q+">"+e(s.category)+"</span><span>"+f(s.stars)+" &#9733;</span><span>by "+e(s.author)+"</span>"+feat+d+"</div><button type="+q+"button"+q+" data-cmd="+q+e(s.install)+q+" style="+q+btnSt+q+">Copy install command</button></article>";'
+            '}).join("");'
+            'bar.querySelectorAll("button[data-catsort]").forEach(function(b){b.style.background=b.getAttribute("data-catsort")===mode?"rgba(167,139,250,.2)":"transparent";});'
+            '}'
+            'bar.addEventListener("click",function(ev){var b=ev.target.closest&&ev.target.closest("button[data-catsort]");if(!b)return;render(b.getAttribute("data-catsort"));});'
+            '})();</script>'
         )
     body = f"""<div class="wrap">
 <section class="hero" style="padding:50px 0 30px">
