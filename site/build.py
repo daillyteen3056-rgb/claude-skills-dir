@@ -187,6 +187,12 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <link rel="alternate" type="application/rss+xml" title="New Claude Code skills" href="/new/feed.xml">
 <style>{CSS}</style>
 {extra_head}
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-NV5B9DJX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
 </head>
 <body>
 <nav><div class="wrap">
@@ -713,6 +719,12 @@ NOT_FOUND = """<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>404 — """ + SITE_NAME + """</title><meta name="robots" content="noindex">
 <style>body{font:16px/1.5 ui-sans-serif,system-ui,sans-serif;background:#0a0a0f;color:#e8eaed;min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0;text-align:center;padding:20px}.b{max-width:420px}h1{font-size:56px;color:#a78bfa;margin:0 0 10px}h2{color:#fff;font-weight:600;margin:0 0 16px;font-size:20px}p{color:#9aa0a6;margin:0 0 24px}a{color:#a78bfa;text-decoration:none;font-weight:600;border:1px solid #a78bfa;padding:10px 20px;border-radius:8px;display:inline-block}a:hover{background:#a78bfa;color:#000}</style>
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-NV5B9DJX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
 </head><body><div class="b"><h1>404</h1><h2>Skill not found</h2>
 <p>This skill may have been removed, renamed, or never existed.</p>
 <a href="/">← Browse all skills</a></div></body></html>"""
@@ -1768,3 +1780,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
