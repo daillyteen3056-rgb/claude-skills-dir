@@ -982,13 +982,24 @@ SEARCH_HTML = """<div class="search"><input id="q" type="search" placeholder="Se
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function fmtStars(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}
   function card(s){return '<article class="card"><h3><a href="/skills/'+esc(s.slug)+'/">'+esc(s.name)+'</a></h3><p>'+esc(s.short_description)+'</p><div class="meta"><span class="chip">'+esc(s.category)+'</span><span>'+fmtStars(s.stars)+' \\u2605</span><span>by '+esc(s.author)+'</span></div><button type="button" data-cmd="'+esc(s.install||'')+'" style="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button></article>';}
+  var sortMode='stars';
+  function commitDate(s){return String(s.pushed_at||s.updated_at||'');}
   function run(){
     var v=q.value.trim().toLowerCase();
     if(!v){out.innerHTML='';return;}
-    var terms=v.split(/\\s+/);
+    var terms=v.split(/\s+/);
     var hits=data.filter(function(s){var t=[s.name,s.slug,s.short_description,(s.tags||[]).join(' '),s.category].join(' ').toLowerCase();return terms.every(function(w){return t.indexOf(w)>-1;});});
-    hits.sort(function(a,b){return (b.stars||0)-(a.stars||0);});
-    out.innerHTML=hits.length?(hits.length>24?'<p style="color:var(--muted)">Showing the top 24 of '+hits.length+' matches. Add another word to narrow it down.</p>':'')+hits.slice(0,24).map(card).join(''):'<p style="color:var(--muted)">No skills match \\u201c'+esc(v)+'\\u201d. Try a broader word, browse the <a href="/best/">best skills by topic</a>, or <a href="/submit/">suggest a skill</a>.</p>';
+    if(sortMode==='commit'){
+      hits.sort(function(a,b){var da=commitDate(a),db=commitDate(b);if(da===db)return (b.stars||0)-(a.stars||0);if(!da)return 1;if(!db)return -1;return db.localeCompare(da);});
+    }else{
+      hits.sort(function(a,b){return (b.stars||0)-(a.stars||0);});
+    }
+    if(!hits.length){out.innerHTML='<p style="color:var(--muted)">No skills match \u201c'+esc(v)+'\u201d. Try a broader word, browse the <a href="/best/">best skills by topic</a>, or <a href="/submit/">suggest a skill</a>.</p>';return;}
+    var bar='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:13px;color:var(--muted)"><span>Sort:</span><button type="button" data-sort="stars" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:'+(sortMode==='stars'?'rgba(167,139,250,.2)':'transparent')+';color:inherit;cursor:pointer">Stars</button><button type="button" data-sort="commit" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:'+(sortMode==='commit'?'rgba(167,139,250,.2)':'transparent')+';color:inherit;cursor:pointer">Last commit</button></div>';
+    var note=hits.length>24?'<p style="color:var(--muted)">Showing the top 24 of '+hits.length+' matches. Add another word to narrow it down.</p>':'';
+    var items=hits.slice(0,24).map(function(s){var h=card(s);var d=commitDate(s).slice(0,10);return sortMode==='commit'&&d?h.replace('</div><button','<span>'+esc(d)+'</span></div><button'):h;}).join('');
+    out.innerHTML=bar+note+items;
+    out.querySelectorAll('button[data-sort]').forEach(function(btn){btn.addEventListener('click',function(){sortMode=btn.getAttribute('data-sort');run();});});
   }
   function load(cb){if(data)return cb();fetch('/data/skills.json').then(function(r){return r.json();}).then(function(d){data=d;cb();});}
   q.addEventListener('input',function(){load(run);});
