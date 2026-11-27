@@ -220,6 +220,10 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 
 def skill_card(s: dict) -> str:
     featured = '<span class="chip featured">★ Featured</span>' if s.get("featured") else ""
+    has_scripts = bool((s.get("meta") or {}).get("has_scripts"))
+    scripts_chip = '<span class="chip" title="Includes scripts — inspect source before installing">has scripts</span>' if has_scripts else ""
+    repo_url = s.get("repo_url") or ""
+    gh_link = f'<a href="{esc(repo_url)}" rel="noopener" style="margin-left:8px;font-size:12px;opacity:.85">GitHub &rarr;</a>' if repo_url else ""
     return f"""<article class="card">
 <h3><a href="/skills/{esc(s['slug'])}/">{esc(s['name'])}</a></h3>
 <p>{esc(s.get('short_description', ''))}</p>
@@ -228,8 +232,12 @@ def skill_card(s: dict) -> str:
   <span>{fmt_stars(s.get('stars'))} ★</span>
   <span>by {esc(s['author'])}</span>
   {featured}
+  {scripts_chip}
 </div>
-<button type="button" data-cmd="{esc(install_cmd(s))}" style="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button>
+<div style="margin-top:10px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+<button type="button" data-cmd="{esc(install_cmd(s))}" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button>
+{gh_link}
+</div>
 </article>"""
 
 
@@ -436,6 +444,7 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 {X.sidebar_rows(s)}
 <a class="cta" href="{esc(s.get('repo_url', '#'))}" rel="noopener">View on GitHub →</a>
 <p style="margin-top:8px;font-size:12px;color:var(--muted)"><a href="{esc(s.get('repo_url', '#'))}" rel="noopener">Inspect directory &amp; files</a> before installing.</p>
+{"<p style=\"margin-top:6px;font-size:12px;color:var(--muted)\">Contains scripts &mdash; review code on GitHub before running the install command.</p>" if (s.get("meta") or {}).get("has_scripts") else ""}
 {sidebar_promo(s)}
 </aside>
 </div>
