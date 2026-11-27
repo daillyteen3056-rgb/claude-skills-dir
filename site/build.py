@@ -450,8 +450,13 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 
 def render_listing(title: str, description: str, skills: list[dict], canonical: str) -> str:
     cards = "\n".join(skill_card(s) for s in sorted(skills, key=lambda x: -(x.get("stars") or 0))) or "<p>No skills in this group yet.</p>"
+    cat_nav = ""
+    if canonical.startswith("/category/"):
+        cur_cat = canonical.strip("/").split("/", 1)[-1]
+        cat_nav = f'<div class="breadcrumb" style="margin-bottom:14px"><a href="/">Home</a> › <a href="/#categories">Categories</a> › <span>{esc(cur_cat.replace("-", " ").title())}</span></div>'
     body = f"""<div class="wrap">
 <section class="hero" style="padding:50px 0 30px">
+{cat_nav}
 <h1>{esc(title)}</h1>
 <p>{esc(description)}</p>
 </section>
