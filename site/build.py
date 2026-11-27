@@ -457,7 +457,13 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
     if canonical.startswith("/category/"):
         cur_cat = canonical.strip("/").split("/", 1)[-1]
         cat_nav = f'<div class="breadcrumb" style="margin-bottom:14px"><a href="/">Home</a> › <a href="/#categories">Categories</a> › <span>{esc(cur_cat.replace("-", " ").title())}</span></div>'
-        cat_sort_bar = '<div id="catSortBar" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:var(--muted)"><span>Sort:</span><button type="button" data-catsort="stars" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:rgba(167,139,250,.2);color:inherit;cursor:pointer">Stars</button><button type="button" data-catsort="commit" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Last commit</button></div>'
+        cat_sort_bar = (
+            '<div id="catSortBar" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:var(--muted)">'
+            '<span>Sort:</span>'
+            '<button type="button" data-catsort="stars" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:rgba(167,139,250,.2);color:inherit;cursor:pointer">Stars</button>'
+            '<button type="button" data-catsort="commit" style="padding:3px 9px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Last commit</button>'
+            '</div>'
+        )
         rows_data = []
         for x in sorted(skills, key=lambda y: -(y.get("stars") or 0)):
             m = x.get("meta") or {}
@@ -474,10 +480,13 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
             })
         payload = json.dumps(rows_data, ensure_ascii=False).replace("</", "<\/")
         cat_sort_js = (
-            "<script>(function(){var bar=document.getElementById('catSortBar');if(!bar)return;"
-            "var grid=document.querySelector('section .grid');if(!grid)return;"
+            "<script>(function(){"
+            "var bar=document.getElementById('catSortBar');"
+            "var grid=document.querySelector('section .grid');"
+            "if(!bar||!grid)return;"
             "var items=" + payload + ";"
-            "function e(s){return String(s||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];});}"
+            "var btnStyle='margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer';"
+            "function e(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}"
             "function f(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}"
             "function render(mode){"
             "var arr=items.slice();"
@@ -486,7 +495,7 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
             "grid.innerHTML=arr.map(function(s){"
             "var feat=s.featured?'<span class="chip featured">★ Featured</span>':'';"
             "var d=mode==='commit'&&s.commit_date?'<span>'+e(s.commit_date.slice(0,10))+'</span>':'';"
-            "return '<article class="card"><h3><a href="/skills/'+e(s.slug)+'/">'+e(s.name)+'</a></h3><p>'+e(s.short_description)+'</p><div class="meta"><span class="chip">'+e(s.category)+'</span><span>'+f(s.stars)+' ★</span><span>by '+e(s.author)+'</span>'+feat+d+'</div><button type="button" data-cmd="'+e(s.install)+'" style="margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer">Copy install command</button></article>';"
+            "return '<article class="card"><h3><a href="/skills/'+e(s.slug)+'/">'+e(s.name)+'</a></h3><p>'+e(s.short_description)+'</p><div class="meta"><span class="chip">'+e(s.category)+'</span><span>'+f(s.stars)+' ★</span><span>by '+e(s.author)+'</span>'+feat+d+'</div><button type="button" data-cmd="'+e(s.install)+'" style="'+btnStyle+'">Copy install command</button></article>';"
             "}).join('');"
             "bar.querySelectorAll('button[data-catsort]').forEach(function(b){b.style.background=b.getAttribute('data-catsort')===mode?'rgba(167,139,250,.2)':'transparent';});"
             "}"
