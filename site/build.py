@@ -486,7 +486,7 @@ def render_listing(title: str, description: str, skills: list[dict], canonical: 
             "if(!bar||!grid)return;"
             "var items=" + payload + ";"
             "var btnStyle='margin-top:10px;font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid rgba(127,127,127,.45);background:transparent;color:inherit;cursor:pointer';"
-            "function e(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}"
+            "function e(v){return String(v||'').split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split(String.fromCharCode(34)).join('&quot;');}"
             "function f(n){n=n||0;return n>=1000?(Math.round(n/100)/10)+'k':String(n);}"
             "function render(mode){"
             "var arr=items.slice();"
