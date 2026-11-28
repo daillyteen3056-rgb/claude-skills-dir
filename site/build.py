@@ -1885,15 +1885,23 @@ def main() -> int:
     print(f"[gen] tag pages:      {len(tags)}")
     print(f"[gen] compare pages:  {compare_count}")
     print(f"[gen] total URLs:     {len(urls)}")
-    print(f"[gen] output:         {OUT}")
-    for _rel in ["impact-site-verification.txt", ".well-known/impact-site-verification.txt"]:
-        _fp = OUT / _rel
-        _fp.parent.mkdir(parents=True, exist_ok=True)
-        _fp.write_text("Impact-Site-Verification: 98af9c23-0975-4d36-afdc-74269a679b58\n", encoding="utf-8")
 
-    indexnow_ping(urls)
-    return 0
+# SKILLNEST_SAFETY_GUARD
+_BLOCKED_REPOS = {
+    "gencraft-labs/skills",
+}
+_BLOCKED_TERMS = (
+    "setup-browser-cookies",
+    "last30days",
+    "face-swap",
+    "faceswap",
+    "upload browser profile",
+)
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+def _is_safe_skill_item(item):
+    raw = str(item).lower()
+    if any(b in raw for b in _BLOCKED_REPOS):
+        return False
+    if any(term in raw for term in _BLOCKED_TERMS):
+        return False
+    return True
