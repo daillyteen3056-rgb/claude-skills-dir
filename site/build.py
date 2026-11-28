@@ -193,6 +193,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
   function gtag(){{dataLayer.push(arguments);}}
   gtag('js', new Date());
 </script>
+  <meta name='impact-site-verification' value='98af9c23-0975-4d36-afdc-74269a679b58'>
 </head>
 <body>
 <nav><div class="wrap">
