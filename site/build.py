@@ -299,6 +299,18 @@ def render_home(skills: list[dict]) -> str:
     )
     tags_html = " ".join(f'<a href="/tag/{esc(t)}/">{esc(t)}</a>' for t in [t for t, _n in Counter(t for s in skills for t in (s.get("tags") or [])).most_common(40)])
 
+    _repo = esc(s.get("repo_url") or s.get("repo") or "Listed repository")
+    _cmd_txt = (cmd or "").lower()
+    _one_liner_risk = ("curl " in _cmd_txt or "wget " in _cmd_txt) and ("| sh" in _cmd_txt or "| bash" in _cmd_txt)
+    _install_note = "Flags one-line remote shell pipe in install command — inspect before running." if _one_liner_risk else "Standard repository/folder install flow; inspect scripts before running."
+    safety_html = (
+        '<div class="section-h">Safety &amp; trust check</div>'
+        '<ul>'
+        f'<li><strong>Source:</strong> {_repo}</li>'
+        '<li><strong>Automated guard:</strong> Passed blocklist check (no known cookie-stealer or blocked repo patterns).</li>'
+        f'<li><strong>Install flow:</strong> {esc(_install_note)}</li>'
+        '</ul>'
+    )
     body = f"""<div class="wrap">
 <section class="hero">
 <h1>Every Claude Code skill,<br><span>one search away.</span></h1>
@@ -420,6 +432,8 @@ def render_skill(s: dict, all_skills: list[dict]) -> str:
 
 <div class="section-h">When it triggers</div>
 {X.triggers_html(s, triggers_html)}
+
+{safety_html}
 
 <div class="section-h">Tags</div>
 <div class="tag-cloud">
@@ -1744,7 +1758,10 @@ def main() -> int:
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True, exist_ok=True)
 
-    skills = clean_skills(json.loads(DATA.read_text(encoding="utf-8")))
+    raw_skills = clean_skills(json.loads(DATA.read_text(encoding="utf-8")))
+    skills = [s for s in raw_skills if _is_safe_skill_item(s)]
+    if len(skills) != len(raw_skills):
+        print(f"[safety] filtered {len(raw_skills) - len(skills)} blocked skill(s)")
     _meta = X.load_meta(PROJECT / "data" / "skill_meta.json")
     for s in skills:
         s["meta"] = _meta.get(s["slug"]) or {}
