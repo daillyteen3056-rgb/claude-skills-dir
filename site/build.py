@@ -1886,19 +1886,14 @@ def main() -> int:
     print(f"[gen] compare pages:  {compare_count}")
     print(f"[gen] total URLs:     {len(urls)}")
     print(f"[gen] output:         {OUT}")
+    for _rel in ["impact-site-verification.txt", ".well-known/impact-site-verification.txt"]:
+        _fp = OUT / _rel
+        _fp.parent.mkdir(parents=True, exist_ok=True)
+        _fp.write_text("Impact-Site-Verification: 98af9c23-0975-4d36-afdc-74269a679b58\n", encoding="utf-8")
+
     indexnow_ping(urls)
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-
-# IMPACT_TXT_AUTO
-for _d in [Path(__file__).resolve().parent / 'dist', Path('site/dist')]:
-    if _d.parent.exists():
-        _d.mkdir(parents=True, exist_ok=True)
-        (_d / 'impact-site-verification.txt').write_text('Impact-Site-Verification: 98af9c23-0975-4d36-afdc-74269a679b58\n', encoding='utf-8')
-        (_d / '.well-known').mkdir(parents=True, exist_ok=True)
-        (_d / '.well-known' / 'impact-site-verification.txt').write_text('Impact-Site-Verification: 98af9c23-0975-4d36-afdc-74269a679b58\n', encoding='utf-8')
