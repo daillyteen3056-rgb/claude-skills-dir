@@ -168,6 +168,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="impact-site-verification" value="98af9c23-0975-4d36-afdc-74269a679b58">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{esc(title)}</title>
 <meta name="description" content="{desc}">
@@ -193,7 +194,7 @@ def layout(title: str, description: str, body: str, canonical: str, extra_head: 
   function gtag(){{dataLayer.push(arguments);}}
   gtag('js', new Date());
 </script>
-  <meta name="impact-site-verification" value="98af9c23-0975-4d36-afdc-74269a679b58">
+  <script type="text/javascript">(function(i,m,p,a,c,t){{c.ire_o=p;c[p]=c[p]||function(){{(c[p].a=c[p].a||[]).push(arguments)}};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)}})('https://utt.impactcdn.com/P-A8337001-7bd4-489a-a950-f8a5611e714d1.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');</script>
 </head>
 <body>
 <nav><div class="wrap">
